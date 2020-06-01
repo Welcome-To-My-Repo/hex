@@ -23,24 +23,38 @@
 #include <fstream>
 #include <iomanip>
 
+//output strings
+#define unsaved "Buffer has unsaved changes!"
+#define empty "Buffer is empty!"
+#define eof "Offset is at the End of File!"
+#define nowinsize "Couldn't get window size!"
+#define small "Window is too small!"
+#define rerr "Read error!"
+#define terr "Couldn't set terminal attributes!"
+
 //consolidates all the data needed for maintaining a file buffer
 struct file_buffer
 {
 	std::string buffer;
 	std::string pathname;
 	bool edited = false;
-	int current_offset;
+	int current_offset = 0;
 };
 termios editor, preserve;
+int word_size = 8;
 
 void restore ();
+/**
+* getText grabs new words from the user for the commands a, i, and c.
+*/
+std::string getText ();
 
 int main (int argc, char **argv)
 {
-	int current_buffer, word_size = 8;
+	int current_buffer;
 	file_buffer *buffer;	//points to the current file buffer
 	std::vector<file_buffer> files;
-	std::string clear_screen, commands, out;
+	std::string tmp, commands, out;
 	char key[1];
 	std::fstream fs;
 	std::stringstream sts;
@@ -85,255 +99,139 @@ int main (int argc, char **argv)
         editor.c_cc[VTIME] = 1;
 	if (tcsetattr (STDIN_FILENO, TCSAFLUSH, &editor) == -1)
 	{
-		perror ("Couldn't set terminal attributes!");
+		perror (terr);
 		exit (1);
 	}
 //clear terminal window
 	winsize ws;
 	if (ioctl (STDOUT_FILENO, TIOCGWINSZ, &ws) == -1)
 	{
-		perror ("Couldn't get window size!");
+		perror (nowinsize);
 		exit (2);
 	}
 	if (ws.ws_col < 43 or ws.ws_row < 2)
 	{
-		perror ("Window is too small!");
+		perror (small);
 		exit (3);
 	}
 	for (int i = 0; i < ws.ws_row; i ++)
-		clear_screen.append ("\n");
-	write (STDOUT_FILENO, clear_screen.c_str (), clear_screen.size ());
+		tmp.append ("\n");
+	write (STDOUT_FILENO, tmp.c_str (), tmp.size ());
+	write (STDOUT_FILENO, ":", 1);
 	while (1)
 	{
 		key[0] = '\0';
 		if (read (STDIN_FILENO, key, 1) == -1
 			and errno != EAGAIN)
 		{
-			perror ("Read error!");
+			perror (rerr);
 			exit (5);
 		}
-		if (key[0] == 0)
+		if (key[0] == 0 or key[0] == 27)
 		{
 			continue;
 		}
 		if (key[0] == 10 or key[0] == 13)
 		{
 			write (STDOUT_FILENO, "\n", 1);
-
-			switch (commands[0])
+			if (commands.size () > 0)
 			{
-				case 'a':
+				switch (commands[0])
 				{
-					char hex[3], a[1];
-					hex[2] = '\0';
-					int counter = 0;
-					bool app;
-					while (app)
+					case 's':
+						break;
+					case 'w':
+						break;
+					case 'q':
 					{
-						sts
-							<< '\r'
-							<< "0x"
-							<< std::hex
-							<< std::setw (8)
-							<< std::left
-							<< std::setfill ('0')
-							<< buffer->current_offset
-							<< '|'
-							<< std::resetiosflags (std::ios_base::fmtflags ());
-						for (int j = 0; j < word_size; j ++)
-						{
-							if (buffer->buffer.size () > 0)
-							{
-								if (buffer->current_offset + j < buffer->buffer.size ())
-								{
-									sts << std::hex << std::setw (2) << (int)buffer->buffer.at(buffer->current_offset + j);
-								}
-								else
-								{
-									sts << "  ";
-								}
-							}
-							else
-								sts << "  ";
-							if (j < word_size - 1)
-								sts << '-';
-						}
-						sts << '|';
-						for (int j = 0; j < word_size; j ++)
-						{
-							if (buffer->buffer.size () > 0)
-							{
-								if (buffer->current_offset + j < buffer->buffer.size ())
-								{
-									if (buffer->buffer.at(buffer->current_offset + j) > 31 and buffer->buffer.at(buffer->current_offset + j) < 128)
-										sts << buffer->buffer.at(buffer->current_offset + j);
-									else
-										sts << ' ';
-								}
-								else
-								{
-									sts << ' ';
-								}
-							}
-							else
-								sts << ' ';
-						}
-						write (STDOUT_FILENO, sts.str().c_str (), sts.str().size());
-						key[0] == 0;
-						while (key[0] == 0)
-						{
-							key[0] = 0;
-							if (read (STDIN_FILENO, key, 1) == -1 and errno != EAGAIN)
-							{
-								perror ("Read error!");
-								exit (5);
-							}
-							if ((key[0] > 47 and key[0] < 58) or (key[0] > 64 and key[0] < 71) or (key[0] > 96 and key[0] < 103))
-							{
-								hex[0] = key[0];
-							}
-							else if (key[0] == 46)
-							{
-								app = false;
-							}
-							else
-							{
-								key[0] = 0;
-							}
-						}
-						while (key[0] == 0 and app)
-                                                {
-							key[0] = 0;
-                                                        if (read (STDIN_FILENO, key, 1) == -1 and errno != EAGAIN)
-                                                        {
-                                                                perror ("Read error!");
-                                                                exit (5);
-                                                        }
-                                                        if ((key[0] > 47 and key[0] < 58) or (key[0] > 64 and key[0] < 71) or (key[0] > 96 and key[0] < 103))
-                                                        {
-								hex[1] = key[0];
-                                                        }
-                                                        else
-                                                        {
-                                                                key[0] = 0;
-                                                        }
-                                                }
-						if (app)
-						{
-							sscanf (hex, "%h", a);
-							buffer->buffer.insert (buffer->current_offset + counter, a);
-							counter ++;
-						}
-					}
-					break;
-				}
-				case 'i':
-				{
-					break;
-				}
-				case 'c':
-				{
-					break;
-				}
-				case 'd':
-				{
-					break;
-				}
-				case 'm':
-				{
-					break;
-				}
-				case 'n':
-				{
-					break;
-				}
-				case 'r':
-				{
-					break;
-				}
-				case 'v':
-				{
-					if (commands.size () > 1)
-					{
-					}
-					else
-					{
-						if (buffer->buffer.size () > 0)
-						{
-						}
+						if (commands[1] == '!' or !buffer->edited)
+							restore ();
 						else
 						{
-							write (STDOUT_FILENO,
-								"Buffer is empty!\n",
-								sizeof ("BUFFER is empty!\n"));
+							write (STDOUT_FILENO, unsaved, sizeof (unsaved));
 						}
+						break;
 					}
-					break;
-				}
-				case 'w':
-				{
-					break;
-				}
-				case 'q':
-				{
-					if (commands.size () > 1)
+					case 'n':
+						break;
+					case 'r':
+						break;
+					case 'a':
 					{
-						if (commands.at(1) == '!')
+						buffer->edited = true;
+						buffer->buffer.insert (buffer->current_offset, getText ());
+						break;
+					}
+					case 'i':
+					{
+						buffer->edited = true;
+						buffer->buffer.insert (buffer->current_offset - word_size, getText ());
+						break;
+					}
+					case 'c':
+					{
+						buffer->edited = true;
+						tmp = getText ();
+						for (int i = 0; i < word_size; i ++)
 						{
-							restore ();
+							buffer->buffer.at(i) = tmp.at(i);
 						}
+						buffer->buffer.insert (buffer->current_offset + word_size, tmp.substr (8, std::string::npos));
+						break;
 					}
-					else if (!buffer->edited)
+					case 'd':
+						break;
+					case 'm':
+						break;
+					case 'v':
+						break;
+					case 'y':
+						break;
+					case 'p':
+						break;
+					default:
 					{
-						restore ();
-					}
-					else
-					{
-						write (STDOUT_FILENO,
-							"Most recent changes haven't been saved!",
-							sizeof ("Most recent changes haven't been saved!"));
-					}
-					break;
-				}
-				case 'y':
-				{
-					break;
-				}
-				case 'p':
-				{
-					break;
-				}
-				case 's':
-				{
-					if (commands.size () < 2)
-					{
-						write (STDOUT_FILENO,
-							"Nothing to set...\n",
-							sizeof ("Nothing to set...\n"));
-					}
-					else
-					{
-					}
-					break;
-				}
-				default:
-				{
-					if (commands.size () == 0)
-					{
-						buffer->current_offset + word_size;
+
 					}
 				}
 			}
+			else
+			{
+				if (buffer->buffer.size () > 0)
+				{
+					if (buffer->current_offset < buffer->buffer.size ())
+						buffer->current_offset ++;
+					if (buffer->current_offset < buffer->buffer.size ())
+					{
+						tmp.assign ( buffer->buffer.substr (
+							buffer->current_offset,
+							buffer->current_offset + word_size
+						));
+					}
+					else
+					{
+						write (STDOUT_FILENO, eof, sizeof (eof));
+					}
+				}
+				else
+				{
+					write (STDOUT_FILENO, empty, sizeof (empty));
+				}
+			}
 			commands.clear ();
+			write (STDOUT_FILENO, "\n:", 2);
 		}
 		else if (key[0] == 127 or key[0] == 8)
 		{
 			commands.pop_back ();
+			write (STDOUT_FILENO, "\r", 1);
+			write (STDOUT_FILENO, commands.c_str (), commands.size ());
 		}
 		else
 		{
 			commands.push_back (key[0]);
-			write (STDOUT_FILENO, key, 1);
+			write (STDOUT_FILENO, "\r", 1);
+			write (STDOUT_FILENO, commands.c_str (), commands.size ());
 		}
 	}
 	return 0;
@@ -346,6 +244,126 @@ void restore ()
 		perror ("Couldn't reset terminal!");
 		exit (4);
 	}
-	printf ("\n");
+	//printf ("\n");
 	exit (0);
+}
+
+std::string getText ()
+{
+	std::string buffer;
+	int word_counter, hex_counter = 0;
+	std::stringstream sts;
+	char key[1] = {0}, hex[2] = {48, 48}, t[1];
+	while (1)
+	{
+		sts.str ("");
+		sts
+			<< "0x"
+			<< std::hex
+			<< std::setw (7)
+			<< std::right
+			<< std::setfill ('0')
+			<< word_counter
+			<< '0'
+			<< '|';
+		write (STDOUT_FILENO, sts.str ().c_str (), sts.str ().size ());
+		sts << std::flush;
+		while (1)
+		{
+			key[0] = 0;
+			while (key[0] == 0)
+			{
+				if (read (STDIN_FILENO, key, 1) == -1 and errno != EAGAIN)
+				{
+					perror ("Read error");
+					exit (5);
+				}
+				if (key[0] > 47 and key[0] < 58)
+				{
+
+					write (STDOUT_FILENO, key, 1);
+					hex[0] = key[0];
+				}
+				else if (key[0] > 96 and key[0] < 103)
+				{
+					write (STDOUT_FILENO, key, 1);
+					hex[0] = key[0];
+				}
+				else if (key[0] > 64 and key[0] < 71)
+				{
+					key[0] += 32;
+					write (STDOUT_FILENO, key, 1);
+					hex[0] = key[0];
+				}
+				else if (key[0] == '.')
+				{
+					write (STDOUT_FILENO, ".", 1);
+					return buffer;
+				}
+				else
+				{
+					key[0] = 0;
+				}
+			}
+			key[0] = 0;
+			while (key[0] == 0)
+			{
+				if (read (STDIN_FILENO, key, 1) == -1 and errno != EAGAIN)
+				{
+					perror ("Read error!");
+					exit (5);
+				}
+				if (key[0] > 47 and key[0] < 58)
+				{
+
+					write (STDOUT_FILENO, key, 1);
+					hex[0] = key[0];
+				}
+				else if (key[0] > 96 and key[0] < 103)
+				{
+					write (STDOUT_FILENO, key, 1);
+					hex[0] = key[0];
+				}
+				else if (key[0] > 64 and key[0] < 71)
+				{
+					key[0] += 32;
+					write (STDOUT_FILENO, key, 1);
+					hex[0] = key[0];
+				}
+				else if (key[0] == '.')
+				{
+					write (STDOUT_FILENO, ".", 1);
+					return buffer;
+				}
+				else
+				{
+					key[0] = 0;
+				}
+			}
+			sscanf (hex, "%x", t);
+			buffer.push_back (t[0]);
+			hex_counter ++;
+			if (hex_counter < word_size)
+			{
+				write (STDOUT_FILENO, "-", 1);
+			}
+			else
+			{
+				hex_counter = 0;
+				word_counter ++;
+				char p[1];
+				write (STDOUT_FILENO, "|", 1);
+				for (int i = 0; i < word_size; i ++)
+				{
+					p[0] = buffer.at(buffer.size () - word_size + i);
+					if (p[0] > 31 and p[0] < 177)
+						write (STDOUT_FILENO, p, 1);
+					else
+						write (STDOUT_FILENO, ".", 1);
+				}
+				write (STDOUT_FILENO, "\n", 1);
+				break;
+			}
+		}
+	}
 }
