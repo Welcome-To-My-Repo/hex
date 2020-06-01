@@ -14,22 +14,25 @@ $	the last available offset in the buffer
 	change to the current offset relative to the current offset.
 
 COMMANDS
-a [n,'.']
+a [address]
 hexadecimal values
 .
 	Reads hexadeimal values from the input and places them after the line specified by '.' (current line), or 'n' (hexadecimal offset).
 
-i [n,'.']
+i [address]
 hexadecimal values
 .
 	Reads hexadecimal values from the input and places them before the offset specified by '.' (current offset), or 'n' (hexadecimal offset).
 
-c [n,'.']
+c [address]
 hexadecimal values
 .
-	Reads hexadecimal values from the input and places them 
+	Reads hexadecimal values from the input and places them at the specified offset.
 
-m [n,'.'],[n],[n,'.']
+d [address],[address]
+	deletes the specified
+
+m [address],[address],[address]
 	Moves a series of words located at the starting offset until the range to begin after the target offset
 
 n
@@ -38,8 +41,8 @@ n
 r
 	rewinds the argument list and the first tile in the list is edited
 
-[n,'.'],[n]
-	prints the words located between the first offset and the range
+v [address],[address]
+	prints the words located between the first offset and the second
 
 w [file]
 	writes the specified file buffer to the pathname. if no file is specified, the current edited file will be written
@@ -56,10 +59,10 @@ wq
 wq!
 	writes the buffer then terminates, ignoring unwritten files.
 
-y [n,.],[n,.] [buffer]
+y [address],[address] [buffer]
 	places the specified offset range in a named buffer for later retrieval via 'p'
 
-p [n,.] [buffer]
+p [address] [buffer]
 	places the specified buffer at the specified offset
 
 s [variable name] [value]
