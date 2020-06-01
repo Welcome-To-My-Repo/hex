@@ -1,0 +1,41 @@
+.TH HEX 1 "2020" "Hexadecimal Editor" "Hex User Manual"
+.SH NAME
+hex
+.SH SYNOPSIS
+.HP
+.ad 1
+\fBhex\fR [\fIfile\fR ...]
+.SS "File Manipulation"
+.I Hex
+is normally editing the contents of a single file,
+whose name is recorded in the 
+.I current
+file name.
+.I Hex
+performs all editing actions in a buffer
+into which the text of the file is initially read.
+Changes made to the buffer have no effect on the file being
+edited unless and until the buffer contents are written out to the
+file with a
+.I write
+command.
+After the buffer contents are written,
+the previous contents of the written file are no longer aessible.
+when a file is edited,
+its name becomes the current file name,
+and its contents are read into the buffer.
+.PP
+The current file is almost always considered to be
+.I edited.
+This means that the contents of the buffer are logically
+connected with the current file name,
+so that writing the current buffer contents onto that file,
+even if it exists,
+is a reasonable action.
+If the current file is not 
+.I edited
+then
+.I Hex
+will not normally write on it if it already exists.
+.SS "Command Structure"
+.PP
