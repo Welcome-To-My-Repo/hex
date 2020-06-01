@@ -124,77 +124,105 @@ int main (int argc, char **argv)
 			{
 				case 'a':
 				{
-					while (1)
+					char hex[3], a[1];
+					hex[2] = '\0';
+					int counter = 0;
+					bool app;
+					while (app)
 					{
-						for (int i = 0; i < word_size; i ++)
+						sts
+							<< '\r'
+							<< "0x"
+							<< std::hex
+							<< std::setw (8)
+							<< std::left
+							<< std::setfill ('0')
+							<< buffer->current_offset
+							<< '|'
+							<< std::resetiosflags (std::ios_base::fmtflags ());
+						for (int j = 0; j < word_size; j ++)
 						{
-							sts
-								<< '\r'
-								<< "0x"
-								<< std::hex
-								<< std::setw (8)
-								<< std::left
-								<< std::setfill ('0')
-								<< buffer->current_offset
-								<< '|';
-							for (int j = 0; j < word_size; j ++)
+							if (buffer->buffer.size () > 0)
 							{
-								if (buffer->buffer.size () > 0)
+								if (buffer->current_offset + j < buffer->buffer.size ())
 								{
-									if (buffer->current_offset + j < buffer->buffer.size ())
-									{
-										sts << std::hex << std::setw (2) << (int)buffer->buffer.at(buffer->current_offset + 1);
-									}
-									else
-									{
-										sts << "  ";
-									}
+									sts << std::hex << std::setw (2) << (int)buffer->buffer.at(buffer->current_offset + j);
 								}
 								else
+								{
 									sts << "  ";
-								if (j < word_size - 1)
-									sts << '-';
-							}
-							sts << '|';
-							for (int j = 0; j < word_size; j ++)
-							{
-								
-							}
-							write (STDOUT_FILENO, sts.str().c_str (), sts.str().size());
-						}
-						for (int i = 0; i < word_size; i ++)
-						{
-							key[0] == 0;
-							while (key[0] == 0)
-							{
-								if (read (STDIN_FILENO, key, 1) == -1 and errno != EAGAIN)
-								{
-									perror ("Read error!");
-									exit (5);
 								}
-								if ((key[0] > 47 and key[0] < 58) or (key[0] > 64 and key[0] < 71) or (key[0] > 96 and key[0] < 103))
+							}
+							else
+								sts << "  ";
+							if (j < word_size - 1)
+								sts << '-';
+						}
+						sts << '|';
+						for (int j = 0; j < word_size; j ++)
+						{
+							if (buffer->buffer.size () > 0)
+							{
+								if (buffer->current_offset + j < buffer->buffer.size ())
 								{
+									if (buffer->buffer.at(buffer->current_offset + j) > 31 and buffer->buffer.at(buffer->current_offset + j) < 128)
+										sts << buffer->buffer.at(buffer->current_offset + j);
+									else
+										sts << ' ';
 								}
 								else
 								{
-									key[0] = 0;
+									sts << ' ';
 								}
 							}
-							while (key[0] == 0)
+							else
+								sts << ' ';
+						}
+						write (STDOUT_FILENO, sts.str().c_str (), sts.str().size());
+						key[0] == 0;
+						while (key[0] == 0)
+						{
+							key[0] = 0;
+							if (read (STDIN_FILENO, key, 1) == -1 and errno != EAGAIN)
+							{
+								perror ("Read error!");
+								exit (5);
+							}
+							if ((key[0] > 47 and key[0] < 58) or (key[0] > 64 and key[0] < 71) or (key[0] > 96 and key[0] < 103))
+							{
+								hex[0] = key[0];
+							}
+							else if (key[0] == 46)
+							{
+								app = false;
+							}
+							else
+							{
+								key[0] = 0;
+							}
+						}
+						while (key[0] == 0 and app)
+                                                {
+							key[0] = 0;
+                                                        if (read (STDIN_FILENO, key, 1) == -1 and errno != EAGAIN)
                                                         {
-                                                                if (read (STDIN_FILENO, key, 1) == -1 and errno != EAGAIN)
-                                                                {
-                                                                        perror ("Read error!");
-                                                                        exit (5);
-                                                                }
-                                                                if ((key[0] > 47 and key[0] < 58) or (key[0] > 64 and key[0] < 71) or (key[0] > 96 and key[0] < 103))
-                                                                {
-                                                                }
-                                                                else
-                                                                {
-                                                                        key[0] = 0;
-                                                                }
+                                                                perror ("Read error!");
+                                                                exit (5);
                                                         }
+                                                        if ((key[0] > 47 and key[0] < 58) or (key[0] > 64 and key[0] < 71) or (key[0] > 96 and key[0] < 103))
+                                                        {
+								hex[1] = key[0];
+                                                        }
+                                                        else
+                                                        {
+                                                                key[0] = 0;
+                                                        }
+                                                }
+						if (app)
+						{
+							sscanf (hex, "%h", a);
+							buffer->buffer.insert (buffer->current_offset + counter, a);
+							counter ++;
 						}
 					}
 					break;
@@ -287,6 +315,13 @@ int main (int argc, char **argv)
 					{
 					}
 					break;
+				}
+				default:
+				{
+					if (commands.size () == 0)
+					{
+						buffer->current_offset + word_size;
+					}
 				}
 			}
 			commands.clear ();
