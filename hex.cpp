@@ -26,6 +26,7 @@
 #define rerr "Read error!"
 #define terr "Couldn't set terminal attributes!"
 #define cerr "Bad command formatting!"
+
 struct clip;
 struct file_buffer
 {
@@ -62,11 +63,19 @@ std::vector<file_buffer> files;
 void restore ();
 //function to get input
 std::string getText ();
+//function to convert hexadecimal string to character value
+char toC (char *h);
+//function to convert character to hexadecimal string
+char *toH (char c);
+//function to print an offset
+void printo ();
+//overload of printo for printing a buffer that's not the current buffer
+void printo (int b);
 
 int main (int argc, char **argv)
 {
 	int current_buffer = 0;
-	std::string commands;
+	std::string c;
 	char key[1];
 	std::fstream fs;
 	std::stringstream sts, t;
@@ -76,19 +85,26 @@ int main (int argc, char **argv)
 	{
 		for (int i = 0; i < argc - 1; i ++)
 		{
-			files.emplace_back ();
-			files.back ().p = argv[i];
-			fs.open (argv[i], std::ios_base::binary | std::ios_base::in);
-			if (fs.is_open ())
+			if (argv[i][0] == '-')
 			{
-				sts << fs.rdbuf ();
-				fs.close ();
-				files.back ().b.assign (sts.str ());
+				sscanf (&argv[i][1], "%d", word_size);
 			}
 			else
 			{
-				fs.close ();
-				files.back ().b.clear ();
+				files.emplace_back ();
+				files.back ().p = argv[i];
+				fs.open (argv[i], std::ios_base::binary | std::ios_base::in);
+				if (fs.is_open ())
+				{
+					sts << fs.rdbuf ();
+					fs.close ();
+					files.back ().b.assign (sts.str ());
+				}
+				else
+				{
+					fs.close ();
+					files.back ().b.clear ();
+				}
 			}
 		}
 	}
@@ -119,63 +135,155 @@ int main (int argc, char **argv)
 		t << '\n';
 	t << ':';
 	write (1, t.str ().c_str (), t.str ().size ());
+	key[1] = {0};
+
 	while (1)
 	{
-		char key[1] = {0};
-		std::string c;
-		while (1)
+		t.str ("");
+		key[0] = 0;
+		read (0, key, 1);
+		if (key[0] == 0)
 		{
-			t.str ("");
-			key[0] = 0;
-			read (0, key, 1);
-			if (key[0] == 0)
+			continue;
+		}
+		else if (key[0] == 10 or key[0] == 13)
+		{
+			write (1, "\n", 1);
+			if (c.size () == 0)
 			{
-				continue;
-			}
-			else if (key[0] == 10 or key[0] == 13)
-			{
-				write (1, "\n", 1);
-				break;
-			}
-			else if (key[0] == 127 or key[0] == 8)
-			{
-				if (c.size () > 0)
-				{
-					c.pop_back ();
-					t << "\x1b[2K\r:" << c;
-					write (1, t.str ().c_str (), t.str ().size ());
-				}
+				printo ();
+				buffer->o ++;
 			}
 			else
 			{
-				c.push_back (key[0]);
-				write (1, key, 1);
+				switch (c[0])
+				{
+					case '.':
+					{
+						break;
+					}
+					case '$':
+					{
+						break;
+					}
+					case '%':
+					{
+						break;
+					}
+					case '/':
+					{
+						if (c.size () < 2)
+						{
+							write (1, "?", 1);
+							break;
+						}
+					}
+					case '?':
+					{
+						if (c.size () < 2)
+						{
+							write (1, "?", 1);
+							break;
+						}
+						break;
+					}
+					case '\'':
+					{
+						if (c.size () < 2)
+						{
+							write (1, "?", 1);
+							break;
+						}
+						break;
+					}
+					case '0':
+					{
+						if (c.size () < 3)
+						{
+							write (1, "?", 1);
+							break;
+						}
+						break;
+					}
+					case 'a':
+					{
+						break;
+					}
+					case 'c':
+					{
+						break;
+					}
+					case 'i':
+					{
+						break;
+					}
+					//characters that will never appear first return an error immediately
+					case '-':
+					case '+':
+					case 'b':
+					case 'e':
+					case 'g':
+					case 'h':
+					case 'j':
+					case 'k':
+					case 'l':
+					case 'n':
+					case 'o':
+					case 'q':
+					case 't':
+					case '1':
+					case '2':
+					case '3':
+					case '4':
+					case '5':
+					case '6':
+					case '7':
+					case '8':
+					case '9':
+					{
+						write (1, "?", 1);
+						break;
+					}
+					default:
+					{
+
+					}
+				}
+				if (c[0] == '.' or c[0] == '$' or c[0] == '%')
+				{
+
+				}
+				else if (c[0] == '/' and c.size () > 1)
+				{
+
+				}
+				else if (c[0] == '\'' and c.size () > 1)
+				{
+
+				}
+				else if (c[0] == '0' and c.size () > 3)
+				{
+
+				}
+				else
+				{
+				}
+			}
+			c.clear ();
+		}
+		else if (key[0] == 127 or key[0] == 8)
+		{
+			if (c.size () > 0)
+			{
+				c.pop_back ();
+				t << "\x1b[2K\r:" << c;
+				write (1, t.str ().c_str (), t.str ().size ());
 			}
 		}
-		if (c[0] == '.')
+		else
 		{
-
-		}
-		switch (c[0])
-		{
-			case '.':
-			{
-				t.str (c.substr (1, std::string::npos));
-
-				break;
-			}
-			case '0':
-			{
-				break;
-			}
-			case 'q':
-			{
-				break;
-			}
-			case 'a':
-			{
-				break;
-			}
+			c.push_back (key[0]);
+			write (1, key, 1);
 		}
 	}
 }
@@ -184,6 +292,36 @@ void restore ()
 {
 	tcsetattr (STDIN_FILENO, TCSAFLUSH, &preserve);
 	exit (0);
+}
+
+char toC (char *h)
+{
+	char r = 0;
+	if (h[1] > 57)
+		r += h[1] - 87;
+	else
+		r += h[1] - 48;
+	if (h[0] > 57)
+		r += (h[0] - 87) * 16;
+	else
+		r += (h[0] - 48) * 16;
+	return r;
+}
+
+char * toH (char c)
+{
+	char *x = new char[2];
+	x[0] = c / 16;
+	x[1] = c % 16;
+	if (x[0] > 9)
+		x[0] += 87;
+	else
+		x[0] += 48;
+	if (x[1] > 9)
+		x[1] += 87;
+	else
+		x[1] += 48;
+	return x;
 }
 
 std::string getText ()
@@ -198,12 +336,12 @@ std::string getText ()
 		sts
 			<< "0x"
 			<< std::hex
-			<< std::setw (7)
+			<< std::setw (8)
 			<< std::right
 			<< std::setfill ('0')
 			<< word_counter
-			<< '0'
-			<< '|';
+			<< '|'
+			<< "\x1b[0m";
 		write (STDOUT_FILENO, sts.str ().c_str (), sts.str ().size ());
 		sts << std::flush;
 		while (1)
@@ -218,7 +356,6 @@ std::string getText ()
 				}
 				if (key[0] > 47 and key[0] < 58)
 				{
-
 					write (STDOUT_FILENO, key, 1);
 					hex[0] = key[0];
 				}
@@ -253,7 +390,6 @@ std::string getText ()
 				}
 				if (key[0] > 47 and key[0] < 58)
 				{
-
 					write (STDOUT_FILENO, key, 1);
 					hex[0] = key[0];
 				}
@@ -278,7 +414,7 @@ std::string getText ()
 					key[0] = 0;
 				}
 			}
-			sscanf (hex, "%x", t);
+			t[0] = toC (hex);
 			buffer.push_back (t[0]);
 			hex_counter ++;
 			if (hex_counter < word_size)
@@ -304,4 +440,106 @@ std::string getText ()
 			}
 		}
 	}
+}
+
+void printo ()
+{
+	std::stringstream s;
+	s.str ("");
+	if (buffer->b.size () > 0)
+	{
+		s
+			<< "0x"
+			<< std::hex
+			<< std::setw (8)
+			<< std::right
+			<< std::setfill ('0')
+			<< buffer->o
+			<< '|';
+		for (int i = 0; i < word_size; i ++)
+		{
+			if (buffer->o + i < buffer->b.size ())
+			{
+				s << toH (buffer->b[buffer->o + i]);
+			}
+			else
+			{
+				s << "~~";
+			}
+			if (i < word_size - 1)
+				s << '-';
+		}
+		s << '|';
+		for (int i = 0; i < word_size; i ++)
+		{
+			if (buffer->o + i < buffer->b.size ())
+			{
+				if (buffer->b[buffer->o + i] > 31 and buffer->b[buffer->o + i] < 177)
+					s << buffer->b[buffer->o + i];
+				else
+					s << ' ';
+			}
+			else
+			{
+				s << ' ';
+			}
+		}
+		s << '.';
+	}
+	else
+	{
+		s << "Buffer is empty!";
+	}
+	write (1, s.str ().c_str (), s.str ().size ());
+}
+
+void printo (int b)
+{
+	std::stringstream s;
+	s.str ("");
+	if (buffer->b.size () > 0)
+	{
+		s
+			<< "0x"
+			<< std::hex
+			<< std::setw (8)
+			<< std::right
+			<< std::setfill ('0')
+			<< b
+			<< '|';
+		for (int i = 0; i < word_size; i ++)
+		{
+			if (b + i < buffer->b.size ())
+			{
+				s << toH (buffer->b[b + i]);
+			}
+			else
+			{
+				s << "~~";
+			}
+			if (i < word_size - 1)
+				s << '-';
+		}
+		s << '|';
+		for (int i = 0; i < word_size; i ++)
+		{
+			if (b + i < buffer->b.size ())
+			{
+				if (buffer->b[b + i] > 31 and buffer->b[b + i] < 177)
+					s << buffer->b[b + i];
+				else
+					s << ' ';
+			}
+			else
+			{
+				s << ' ';
+			}
+		}
+		s << '.';
+	}
+	else
+	{
+		s << "Buffer is empty!";
+	}
+	write (1, s.str ().c_str (), s.str ().size ());
 }
