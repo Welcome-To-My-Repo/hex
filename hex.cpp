@@ -217,6 +217,18 @@ int main (int argc, char **argv)
 					{
 						break;
 					}
+					case 'q':
+					{
+						if (!buffer->e or c[1] == '!')
+						{
+							restore ();
+						}
+						else
+						{
+							write (1, "!", 1);
+						}
+						break;
+					}
 					//characters that will never appear first return an error immediately
 					case '-':
 					case '+':
@@ -229,7 +241,6 @@ int main (int argc, char **argv)
 					case 'l':
 					case 'n':
 					case 'o':
-					case 'q':
 					case 't':
 					case '1':
 					case '2':
@@ -270,6 +281,7 @@ int main (int argc, char **argv)
 				}
 			}
 			c.clear ();
+			write (1, "\n", 1);
 		}
 		else if (key[0] == 127 or key[0] == 8)
 		{
