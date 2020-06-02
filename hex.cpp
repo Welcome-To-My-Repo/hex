@@ -26,7 +26,7 @@
 #define rerr "Read error!"
 #define terr "Couldn't set terminal attributes!"
 #define cerr "Bad command formatting!"
-
+struct clip;
 struct file_buffer
 {
 	//buffer
@@ -37,6 +37,10 @@ struct file_buffer
 	bool e = false;
 	//offset
 	int o = 0;
+	//clipboard for the file
+	std::vector<clip>c;
+	//volatile clipboard for unnamed y and d operations
+	std::string v;
 };
 struct clip
 {
@@ -53,10 +57,6 @@ int word_size = 8;
 file_buffer *buffer;
 //list of files given in arguments
 std::vector<file_buffer> files;
-//list of buffers set with y and d
-std::vector<clip>clipboard;
-//volatile buffer for y and d when no name is specified
-std::string v;
 
 //function to restore terminal and terminate hex
 void restore ();
@@ -152,7 +152,10 @@ int main (int argc, char **argv)
 				write (1, key, 1);
 			}
 		}
-		if
+		if (c[0] == '.')
+		{
+
+		}
 		switch (c[0])
 		{
 			case '.':

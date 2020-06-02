@@ -35,13 +35,16 @@ d [address],[address]
 m [address],[address],[address]
 	Moves a series of words located at the starting offset until the range to begin after the target offset
 
+[address] m [name]
+	marks an address with a name
+
 n
 	the next file from the command line argument list is edited.
 
 r
 	rewinds the argument list and the first tile in the list is edited
 
-v [address],[address]
+p [address],[address]
 	prints the words located between the first offset and the second
 
 w [file]
@@ -50,7 +53,7 @@ w [file]
 q
 	causes hex to terminate
 
-q!	
+q!
 	causes hex to terminate ignoring any edited files
 
 wq
@@ -62,7 +65,7 @@ wq!
 y [address],[address] [buffer]
 	places the specified offset range in a named buffer for later retrieval via 'p'
 
-p [address] [buffer]
+v [address] [buffer]
 	places the specified buffer at the specified offset
 
 s [variable name] [value]
