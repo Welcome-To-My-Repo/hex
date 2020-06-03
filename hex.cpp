@@ -74,9 +74,9 @@ void printo (int b);
 
 int main (int argc, char **argv)
 {
-	int current_buffer = 0;
-	std::string c;
-	char key[1];
+	int current_buffer = 0, ad1i, ad2i, ad3i, pos, count;
+	std::string c, tmp, path, regx1, regx2;
+	char key[1], ad1[8], ad2[8], ad3[8], name[4];
 	std::fstream fs;
 	std::stringstream sts, t;
 	winsize w;
@@ -87,7 +87,7 @@ int main (int argc, char **argv)
 		{
 			if (argv[i][0] == '-')
 			{
-				sscanf (&argv[i][1], "%d", word_size);
+				sscanf (&argv[i][1], "%d", &word_size);
 			}
 			else
 			{
@@ -156,7 +156,8 @@ int main (int argc, char **argv)
 			}
 			else
 			{
-				switch (c[0])
+				pos = 0;
+				switch (c[pos])
 				{
 					case '.':
 					{
@@ -203,10 +204,31 @@ int main (int argc, char **argv)
 							write (1, "?", 1);
 							break;
 						}
+						pos ++;
+						(while pos < c.size())
+						{
+							if (pos + 1 < c.size)
+							{
+								if (c[pos] == '0' and c[pos + 1] == 'x')
+									break;
+								else
+								{
+									ad1[i] = c[pos];
+									pos ++;
+								}
+							}
+							else
+								break:
+						}
 						break;
 					}
 					case 'a':
 					{
+						t.assign (getText ());
+						if (buffer->o < buffer->b.size ())
+							buffer->b.insert (buffer->o, t);
+						else
+							buffer->b.append (t);
 						break;
 					}
 					case 'c':
