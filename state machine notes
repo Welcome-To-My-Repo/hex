@@ -1,0 +1,25 @@
+hex state machine diagram for the command mode
+
+Character sets:
+hexadecimal "h" [/]
+address "a" [$,%,.]
+mark "m" [']
+command "c" [a,c,d,f,i,m,n,o,p,q,r,s,u,v,w,x,y,z]
+name "n" [0-Z]
+command separator "l" [|, lf, cr]
+
+fields:
+address 1
+address 2
+address 3
+name
+regex 1
+regex 2
+options
+
+variables:
+number of addresses
+number of characters in name field
+number of regular expressions
+
+

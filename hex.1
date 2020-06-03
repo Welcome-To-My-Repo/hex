@@ -4,7 +4,7 @@ hex
 .SH SYNOPSIS
 .HP
 .ad 1
-\fBhex\fR [-\fBword size\fR] [\fIfile\fR ...]
+\fBhex\fR [\fIfile\fR ...]
 .SH DESCRIPTION
 .I Hex
 is a hexadecimal editor based on the POSIX text editor
@@ -23,11 +23,6 @@ with a command.
 .PP
 .I Hex
 takes the following options:
-.TP
--[\fBword size\fR]
-A whole positive integer value.
-Sets the size of each "line" to
-.I word size.
 .TP
 [\fIfile\fR ...]
 An arbitrary amount of pathnames specified by
@@ -88,19 +83,10 @@ More than one command may be placed on a line by separating each pair of
 commands by a `|' character.
 .SS Command Addressing
 .PP
-Addresses in
+Adressing in
 .I hex
-are determined by the
-.I word size
-and are also referred to as offsets because of their variable nature in
-.I hex.
-The
-.I word size
-is a positive integer that holds the number of bytes that should occur after and
-between each offset.
-The series of bytes starting at an address and occurring until before the byte
-at the following offset is referred to as a
-.I block.
+is performed using a byte offset from the first byte of the file represented
+wity a hexadecimal number between /0/ and /ffffffff/. 
 .PP
 Any alphabetical characters used in addressing are only recognized when
 lower-case. This is not out of a sense of individuality, but rather an attempt
@@ -188,12 +174,9 @@ address.
 .SS Commands that transfer to text input mode...
 .PP
 .LP
-(\fB.\fR)\fBa\fR(\fB.\fR)
+(\fB.\fR)\fBa\fR
 .RS
-Places bytes after the specified address. \fBa\fR will optionally take an
-additional third offset specifying a specific byte offset within the word. This
-offset cannot be more than the
-.I word size.
+Places bytes after the specified address.
 .RE
 
 .LP
@@ -203,12 +186,9 @@ Replaces the bytes between the specified offset(s).
 .RE
 
 .LP
-(\fB.\fR)\fBi\fR(\fB.\fR)
+(\fB.\fR)\fBi\fR
 .RS
-Inserts the bytes before the specified address. \fBi\fR will optionally take an
-additional third offset specifying a specific byte offset within the word. This
-offset cannot be more than the
-.I word size.
+Inserts the bytes before the specified address.
 .RE
 
 .LP

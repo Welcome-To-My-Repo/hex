@@ -60,8 +60,6 @@ struct mark
 };
 //termios states
 termios editor, preserve;
-//word size is the length in bytes of each "line"
-int word_size = 8;
 //points to file being edited
 file_buffer *buffer;
 //list of files given in arguments
@@ -113,26 +111,19 @@ int main (int argc, char **argv)
 	{
 		for (int i = 0; i < argc - 1; i ++)
 		{
-			if (argv[i][0] == '-')
+			files.emplace_back ();
+			files.back ().p = argv[i];
+			fs.open (argv[i], std::ios_base::binary | std::ios_base::in);
+			if (fs.is_open ())
 			{
-				sscanf (&argv[i][1], "%d", &word_size);
+				sts << fs.rdbuf ();
+				fs.close ();
+				files.back ().b.assign (sts.str ());
 			}
 			else
 			{
-				files.emplace_back ();
-				files.back ().p = argv[i];
-				fs.open (argv[i], std::ios_base::binary | std::ios_base::in);
-				if (fs.is_open ())
-				{
-					sts << fs.rdbuf ();
-					fs.close ();
-					files.back ().b.assign (sts.str ());
-				}
-				else
-				{
-					fs.close ();
-					files.back ().b.clear ();
-				}
+				fs.close ();
+				files.back ().b.clear ();
 			}
 		}
 	}
@@ -232,7 +223,7 @@ int main (int argc, char **argv)
 				{
 					case '/':
 					{
-						if (addr and count == 0))
+						if (addr and count == 0)
 						{
 							write (1, "?", 1);
 							m = -1;
@@ -518,7 +509,7 @@ std::string getText ()
 			t[0] = toC (hex);
 			buffer.push_back (t[0]);
 			hex_counter ++;
-			if (hex_counter < word_size)
+			if (hex_counter < 16)
 			{
 				write (STDOUT_FILENO, "-", 1);
 			}
@@ -528,7 +519,7 @@ std::string getText ()
 				word_counter ++;
 				char p[1];
 				write (STDOUT_FILENO, "|", 1);
-				for (int i = 0; i < word_size; i ++)
+				for (int i = 0; i < 16; i ++)
 				{
 					p[0] = buffer.at(buffer.size () - word_size + i);
 					if (p[0] > 31 and p[0] < 177)
@@ -557,7 +548,7 @@ void printo ()
 			<< std::setfill ('0')
 			<< buffer->o
 			<< '|';
-		for (int i = 0; i < word_size; i ++)
+		for (int i = 0; i < 16; i ++)
 		{
 			if (buffer->o + i < buffer->b.size ())
 			{
@@ -571,7 +562,7 @@ void printo ()
 				s << '-';
 		}
 		s << '|';
-		for (int i = 0; i < word_size; i ++)
+		for (int i = 0; i < 16; i ++)
 		{
 			if (buffer->o + i < buffer->b.size ())
 			{
@@ -608,7 +599,7 @@ void printo (int b)
 			<< std::setfill ('0')
 			<< b
 			<< '|';
-		for (int i = 0; i < word_size; i ++)
+		for (int i = 0; i < 16; i ++)
 		{
 			if (b + i < buffer->b.size ())
 			{
@@ -618,11 +609,11 @@ void printo (int b)
 			{
 				s << "~~";
 			}
-			if (i < word_size - 1)
+			if (i < 16 - 1)
 				s << '-';
 		}
 		s << '|';
-		for (int i = 0; i < word_size; i ++)
+		for (int i = 0; i < 16; i ++)
 		{
 			if (b + i < buffer->b.size ())
 			{
