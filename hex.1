@@ -188,9 +188,12 @@ address.
 .SS Commands that transfer to text input mode...
 .PP
 .LP
-(\fB.\fR)\fBa\fR
+(\fB.\fR)\fBa\fR(\fB.\fR)
 .RS
-Places bytes after the specified address.
+Places bytes after the specified address. \fBa\fR will optionally take an
+additional third offset specifying a specific byte offset within the word. This
+offset cannot be more than the
+.I word size.
 .RE
 
 .LP
@@ -200,9 +203,12 @@ Replaces the bytes between the specified offset(s).
 .RE
 
 .LP
-(\fB.\fR)\fBi\fR
+(\fB.\fR)\fBi\fR(\fB.\fR)
 .RS
-Inserts the bytes before the specified address.
+Inserts the bytes before the specified address. \fBi\fR will optionally take an
+additional third offset specifying a specific byte offset within the word. This
+offset cannot be more than the
+.I word size.
 .RE
 
 .LP
