@@ -107,35 +107,37 @@ lower-case. This is not out of a sense of individuality, but rather an attempt
 to save time by avoiding pressing the shift key.
 .IP \fB.\fR
 The current offset.
-.IP \fIn\fR
+.IP \fB/\fR\fIn\fR\fB/\fR
 The \fIn\fRth address in the editor's buffer. Addresses are numbered
-sequentially in hexadecimal notation including a "0x" prefix.
+sequentially in hexadecimal notation. Because hexadecimal notation contains
+the same characters as commands in
+.I hex,
+hexadecimal numbers are escaped with a pair of forward slashes, \fB//\fR.
 .I Hex
-supports address sizes of up to eight digits, from "0x0" for the first offset
-to "0xffffffff" for the last offset. This provides valid addressing for files
+supports address sizes of up to eight digits, from "/0/" for the first offset
+to "/ffffffff/" for the last offset. This provides valid addressing for files
 up to four gigabytes in size with a single byte word size. Addresses are entered
-without padding meaning "0x1a" is a valid address, but "0x0000001a" is not.
+without padding meaning "/1a/" is a valid address, but "/0000001a/" is not.
 .IP \fB$\fR
 The last possible offset in the buffer. Because the
 .I word size
 may not always be a factor of the number of bytes in the buffer, the last offset
 may not contain a full block of bytes.
 .IP \fB%\fR
-An abbreviation for "0x0,$"; the entire buffer.
+An abbreviation for "/0/,$"; the entire buffer.
 .IP \fB'\fR\fIname\fR
 An accessor to an address marked with \fBx\fR.
-.IP \fB/\fIpat\fR\fB/\fR\ \fB?\fIpat\fR\fB?\fR
+.IP \fB`\fIpat\fR\fB`\fR\ \fB?\fIpat\fR\fB?\fR
 Scan forward and backward respectively for an offset containing
 .I pat,
 a regular expression (as defined below). When
 .I pat
 is found, the address of the line is "returned" for use with the following
-command syntax. The forms \fB//\fR and \fB??\fR scan using the last regular
+command syntax. The forms \fB``\fR and \fB??\fR scan using the last regular
 expression used in a scan.
-.IP \fB+/-\fR
-Used in conjunction with the above addressing primitives. For example, if the
-current offset is 0x64, then ".+0x3" is equivalent to 0x67. The "+" and "-"
-allow addresses to be mathematically combined.
+.IP \fB+/\fR\fIn\fR\fB/\fR,\fB+/\fR\fIn\fR\fB/\fR
+Specifies an offset of addresses from the current address. For example, if the
+current address is /64/, then the address "+/3/" is equivalent to /67/.
 .SS Command Structure
 .PP
 The following is the syntactical structure that all
@@ -143,12 +145,14 @@ The following is the syntactical structure that all
 commands must follow:
 .RS
 .sp
-\fIaddress\fR\fBcommand\fR[\fIparameters\fR,\fIcount\fR][\fB|, newline, carriage return\fR]
+\fIaddress\fR,\fIaddress\fR\fBcommand\fR[\fIparameters\fR,
+\fIcount\fR][\fB|, newline, carriage return\fR]
 .sp
 .RE
 All components of this structure are optional. Whitespace is ignored.
 .PP
-The degenerate case is the empty command which prints the next line in the file.
+The degenerate case is the empty command which prints the next word in the file.
+.PP
 Providing only an
 .I address
 will update the current address to
@@ -156,13 +160,22 @@ will update the current address to
 and print the word located there. Providing only a
 .B command
 will modify the buffer with that command at the current address.
-.I Parameters
+.PP
+Providing only
+.I parameters
 and
 .I count
 will result in
 .I hex
 attempting to parse them as an address which in the best case scenario will
 unintentionally update the current address.
+.PP
+When providing more than one \fIaddress\fR, the two must be separated by a
+\fB,\fR (comma). When only two \fIaddress\fRes are provided, the words between
+the range of addresses are printed without updating the current address. If two
+\fIaddress\fRes are provided before an applicable \fBcommand\fR, the
+\fBcommand\fR is performed on the range of words specified by the two
+\fIaddress\fRes will print the specified range of buffers.
 .PP
 In the following command descriptions, the possible addresses for each command
 are denoted with a "." and separated with a "," in the case of multiple
@@ -279,6 +292,20 @@ called, the previous file will be the last file on the list.
 .RE
 
 .LP
+\fBo\fR\fIpathname\fR
+.RS
+Adds a new file to the end of the file list. If a file exists at the specified
+\fIpathname\fR, then the contents of that file are read into the buffer.
+.RE
+
+.LP
+\fBs\fR\fIpathname\fR
+.RS
+Opens the file at \fIpathname\fR and reads the contents as command input to the
+editor.
+.RE
+
+.LP
 \fBn\fR
 .RS
 The next file from the argument list is edited. The argument list is handled
@@ -328,9 +355,9 @@ Prints the version number of \fIhex\fR.
 .RE
 
 .LP
-\fBsrce\fR\fIpathname\fR
+\fBargs\fR
 .RS
-Reads and executes commands from the specified file.
+Prints the current sfile list.
 .RE
 
 .LP
@@ -384,24 +411,24 @@ Because \fIhex\fR will be matching regular expressions against positive integer
 values between 0 and 255 rather than alphabetical characters, creating regular
 expressions will happen slightly different: any alphabetical characters are
 automatically treated as metecharacters. Whitespace is ignored. Bytes to be
-matched are given in hexadecimal notation with the "0x" prefix.
+matched are given in hexadecimal and escaped with a pair of forward slashes.
 .PP
 .I Hex
 supports POSIX Extended Regular Expressions.
 .PP
 .IP \fIbyte\fR
-A value between "0x0" and "0xff" which matches itself.
+A value between "/0/" and "/ff/" which matches itself.
 .IP \fB^\fR
 Matches the starting position of the string.
 .IP \fB[]\fR
 A bracket expression matches a single byte that is contained within the
-brackets. For example, "[0x10x20x3]" matches 0x1, 0x2, or 0x3.
+brackets. For example, "[/1//2//3/]" matches /1/, /2/, or /3/.
 "[0x1-0x3]" specifies a range which matches any byte from 0x1 to 0x3. These
-forms can be mixed: "[0x10x20x30x4-0x6]" matches 0x1, 0x2, 0x3, 0x4, 0x5,
-and 0x6, as does "[0x1-0x30x4-0x6]".
+forms can be mixed: "[/1//2//3//4/-/6/]" matches /1/, /2/, /3/, /4/, /5/,
+and /6, as does "[/1/-/3//4/-/6/]".
 .IP \fB[^]\fR
 Matches a single byte that is not contained within the brackets. For example,
-"[60x10x20x3]" matches any byte that is not 0x1, 0x2, or 0x3. As above,
+"[^/1//2//3]" matches any byte that is not /1/, /2/, or /3/. As above,
 byte ranges can be specified with the "-" character and can be mixed with
 literal bytes.
 .IP \fB$\fR
@@ -412,8 +439,8 @@ Defines a marked subexpression.
 Matches the preceding element zero or more times.
 .IP \fB{\fR\fIa,b\fR\fB}\fR
 Matches the preceding element at least \fIa\fR, and not more than \fIb\fR times.
-For example, "0x1b{0x1,0x3}" matches only "0x1b", "0x1b0x1b", and
-"0x1b0x1b0x1b".
+For example, "/1b/{/1/,/3/}" matches only "/1b/", "/1b//1b/", and
+"/1b//1b//1b/".
 .IP \fB?\fR
 Matches the preceding element zero or one time.
 .IP \fB+\fR
