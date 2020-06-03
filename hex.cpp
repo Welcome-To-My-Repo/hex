@@ -28,6 +28,7 @@
 #define cerr "Bad command formatting!"
 
 struct clip;
+struct mark;
 struct file_buffer
 {
 	//buffer
@@ -42,6 +43,8 @@ struct file_buffer
 	std::vector<clip>c;
 	//volatile clipboard for unnamed y and d operations
 	std::string v;
+	//list of marked addresses
+	std::vector <mark>m;
 };
 struct clip
 {
@@ -49,6 +52,11 @@ struct clip
 	std::string b;
 	//buffer name
 	std::string n;
+};
+struct mark
+{
+	char n[4];
+	int o;
 };
 //termios states
 termios editor, preserve;
@@ -71,15 +79,35 @@ char *toH (char c);
 void printo ();
 //overload of printo for printing a buffer that's not the current buffer
 void printo (int b);
+//convert hex address to decimal
+int htoa (char *h);
+//refegex find
+int rfind (std::string r);
+//regex replace
+void rrplace (std::string r);
 
 int main (int argc, char **argv)
 {
-	int current_buffer = 0, ad1i, ad2i, ad3i, pos, count;
-	std::string c, tmp, path, regx1, regx2;
-	char key[1], ad1[8], ad2[8], ad3[8], name[4];
+	int current_buffer = 0, pos, count, s;
+	std::string c, tmp;
+	char key[1], g;
 	std::fstream fs;
 	std::stringstream sts, t;
 	winsize w;
+
+	//command argument variables
+	//addresses are
+	//-1 for the current offset
+	//-2 for the last line
+	//-3 for the entire buffer
+	int o[3];
+	int o1, o2, o3; //addresses are -1 for '$'
+	std::string regex1, regex2, path, pregex1, pregex2;
+	char cmd[1], opt[2], a[8], name[4];
+	bool addr; //true after first delimiting slash is encountered.
+	int ac; //incremented every time an address is populated
+	bool succ; //true if a mark or byte buffer is located
+	bool cmd; //true if a command has been parsed
 
 	if (argc > 1)
 	{
@@ -135,10 +163,160 @@ int main (int argc, char **argv)
 		t << '\n';
 	t << ':';
 	write (1, t.str ().c_str (), t.str ().size ());
-	key[1] = {0};
-
-	while (1)
+	/*
+	* simple state machine that parses the input, populates the command
+	* structure variables, and executes the specified commands.
+	* s specifies the current state:
+	* -1 error state, reads until next command
+	* 0 neutral state
+	* 1 read hexadecimal address
+	* 2 read named address
+	* 3 command
+	* 4 third address
+	* 5 name
+	* 6 pathname
+	* 7 keyword command
+	*/
+	key[0] = 0;
+	ac = 0;
+	addr = false;
+	s = 0;
+	count = 0;
+	while (read (0, key, 1) != 0)
 	{
+		if (key[0] == 0)
+			continue;
+		switch (m)
+		{
+			case -1:
+			{
+				switch (key[0])
+				{
+					case '\n':
+					case '\r':
+					case '|':
+					{
+						m = 0;
+					}
+				}
+			}
+			case 0:
+			{
+				switch (key[0])
+				{
+					case '.': {break;}
+					case '/': {addr = true; m = 1; break;}
+					case '$': {break;}
+					case '%': {break;}
+					case '\'' {break;}
+					case '`': {break;}
+					case '?': {break;}
+					case '+': {break;}
+					case '-': {break;}
+					case 'a':
+					case 'c':
+					case 'i':
+					case 'd':
+					case 'y':
+					case 'v':
+					case 'z':
+					case 'm':
+					case 'p':
+					case 'x':
+					case ''
+				}
+			}
+			case 1:
+			{
+				switch (key[0])
+				{
+					case '/':
+					{
+						if (addr and count == 0))
+						{
+							write (1, "?", 1);
+							m = -1;
+						}
+						if (addr and count > 0)
+						{
+							m = 0;
+							count = 0;
+							sscanf (a, "%x", &o1);
+						}
+						else
+						{
+							addr = true;
+						}
+					}
+					case '0':
+					case '1':
+					case '2':
+					case '3':
+					case '4':
+					case '5':
+					case '6':
+					case '7':
+					case '8':
+					case '9':
+					case 'a':
+					case 'b':
+					case 'c':
+					case 'd':
+					case 'e':
+					case 'f':
+					{
+						if (count < 8)
+						{
+							a[count] = k[0];
+							count ++;
+						}
+						else
+						{
+							write (1, "?", 1);
+							m = -1;
+						}
+					}
+				}
+			}
+			case 2:
+			{
+				if (count < 4)
+				{
+					if (k[0] > 32 and k[0] < 127)
+					{
+						name[count] = k[0];
+					}
+					else
+					{
+						write (1, "?", 1);
+						m = -1;
+					}
+				}
+				else
+				{
+					succ = false;
+					for (int i = 0; i < buffer->m.size (); i ++)
+					{
+						if (strncmp (name, buffer->m[i].n) == 0)
+						{
+							succ = true;
+							if (ac < 3)
+							{
+								o[ac] = buffer->m[i].o;
+							}
+							else
+							{
+								write (1, "?", 1);
+								m = -1;
+							}
+						}
+					}
+				}
+			}
+		}
+		//execute command here
+	}
+
 		t.str ("");
 		key[0] = 0;
 		read (0, key, 1);
@@ -156,150 +334,26 @@ int main (int argc, char **argv)
 			}
 			else
 			{
-				pos = 0;
-				switch (c[pos])
+				sts.str (c);
+				/*
+				* simple state machine that parses the input
+				* and populates the
+				* m speifies the current state (mode)
+				* 0 = error
+				* 1 = populate first address
+				*/
+				int m = 0, addrcount = 0;
+				while (sts.get (g))
 				{
-					case '.':
+					switch (g)
 					{
-						break;
-					}
-					case '$':
-					{
-						break;
-					}
-					case '%':
-					{
-						break;
-					}
-					case '/':
-					{
-						if (c.size () < 2)
+						case '0':
 						{
-							write (1, "?", 1);
+
 							break;
 						}
 					}
-					case '?':
-					{
-						if (c.size () < 2)
-						{
-							write (1, "?", 1);
-							break;
-						}
-						break;
-					}
-					case '\'':
-					{
-						if (c.size () < 2)
-						{
-							write (1, "?", 1);
-							break;
-						}
-						break;
-					}
-					case '0':
-					{
-						if (c.size () < 3)
-						{
-							write (1, "?", 1);
-							break;
-						}
-						pos ++;
-						(while pos < c.size())
-						{
-							if (pos + 1 < c.size)
-							{
-								if (c[pos] == '0' and c[pos + 1] == 'x')
-									break;
-								else
-								{
-									ad1[i] = c[pos];
-									pos ++;
-								}
-							}
-							else
-								break:
-						}
-						break;
-					}
-					case 'a':
-					{
-						t.assign (getText ());
-						if (buffer->o < buffer->b.size ())
-							buffer->b.insert (buffer->o, t);
-						else
-							buffer->b.append (t);
-						break;
-					}
-					case 'c':
-					{
-						break;
-					}
-					case 'i':
-					{
-						break;
-					}
-					case 'q':
-					{
-						if (!buffer->e or c[1] == '!')
-						{
-							restore ();
-						}
-						else
-						{
-							write (1, "!", 1);
-						}
-						break;
-					}
-					//characters that will never appear first return an error immediately
-					case '-':
-					case '+':
-					case 'b':
-					case 'e':
-					case 'g':
-					case 'h':
-					case 'j':
-					case 'k':
-					case 'l':
-					case 'n':
-					case 'o':
-					case 't':
-					case '1':
-					case '2':
-					case '3':
-					case '4':
-					case '5':
-					case '6':
-					case '7':
-					case '8':
-					case '9':
-					{
-						write (1, "?", 1);
-						break;
-					}
-					default:
-					{
-
-					}
-				}
-				if (c[0] == '.' or c[0] == '$' or c[0] == '%')
-				{
-
-				}
-				else if (c[0] == '/' and c.size () > 1)
-				{
-
-				}
-				else if (c[0] == '\'' and c.size () > 1)
-				{
-
-				}
-				else if (c[0] == '0' and c.size () > 3)
-				{
-
-				}
-				else
-				{
+					switch (m)
 				}
 			}
 			c.clear ();
@@ -358,6 +412,19 @@ char * toH (char c)
 	return x;
 }
 
+int htoa (char *)
+{
+//16^7 = 268435456
+//16^6 = 16777216
+//16^5 = 1048576
+//16^4 = 65536
+//16^3 = 4096
+//16^2 = 256
+//16^1 = 16
+//16^0 = 1
+return 0;
+}
+
 std::string getText ()
 {
 	std::string buffer;
@@ -368,7 +435,7 @@ std::string getText ()
 	{
 		sts.str ("");
 		sts
-			<< "0x"
+			//<< "0x"
 			<< std::hex
 			<< std::setw (8)
 			<< std::right
@@ -483,7 +550,7 @@ void printo ()
 	if (buffer->b.size () > 0)
 	{
 		s
-			<< "0x"
+			//<< "0x"
 			<< std::hex
 			<< std::setw (8)
 			<< std::right
@@ -534,7 +601,7 @@ void printo (int b)
 	if (buffer->b.size () > 0)
 	{
 		s
-			<< "0x"
+			//<< "0x"
 			<< std::hex
 			<< std::setw (8)
 			<< std::right
