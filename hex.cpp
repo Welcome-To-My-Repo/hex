@@ -496,9 +496,8 @@ void printo ()
 	{
 		s << "!";
 	}
-	s << "\n";
-	std::cout << s.str ();
-	//std::cout << "\n\r";
+	//s << "\n";
+	write (1, s.str ().c_str (), s.str ().size ());
 }
 
 void printo (int b)
