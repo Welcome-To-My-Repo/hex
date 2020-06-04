@@ -1,0 +1,469 @@
+.TH HEX 1 "2020" "Hexadecimal Editor" "Hex User Manual"
+.SH NAME
+hex
+.SH SYNOPSIS
+.HP
+.ad 1
+\fBhex\fR [\fIfile\fR ...]
+.SH DESCRIPTION
+.I Hex
+is a hexadecimal editor based on the POSIX text editor
+.I ex.
+.I Hex
+implements a basic subset of the pseudo-scripting syntax that ex uses in command
+mode.
+.PP
+Where
+.I ex
+is a line-oriented editor,
+.I hex
+is a byte-word-oriented editor. It groups and accesses series of bytes by a
+variable word length which can be set when invoking the editor, or on the fly
+with a command.
+.PP
+.I Hex
+takes the following options:
+.TP
+[\fIfile\fR ...]
+An arbitrary amount of pathnames specified by
+.I files.
+.SS File Manipulation
+.I Hex
+edits files byte-wise in a buffer into which the contents of the file are
+initially read. Changes made to the buffer have no effect on the file being
+edited unless and until the buffer contents are written out to the file with a
+.I w
+command. After the buffer contents are written, the previous contents of the
+written file are no longer accessible. When a file is edited, its name becomes
+the current file name, and its contents are read into the buffer.
+.PP
+The current file is almost always considered to be
+.I edited.
+.PP
+.I Hex
+edits text using different modes of operation. The first is
+.I command mode.
+Commands are entered when a ':' prompt is present, and are executed each time
+a complete line is sent. In
+.I text input
+mode,
+.I hex
+gathers input bytes and places them in the file. The
+.I a,
+.I i,
+and
+.I c
+commands use text input mode. No prompt is printed when in text input mode. This
+mode is left by typing a '.', and the
+.I command mode
+resumes.
+.PP Command Structure
+In
+.I hex,
+command names are abbreviated from their plain english counterparts.
+.PP
+Most commands require prefix addresses specifying the lines in the file upon
+which they are to have effect. The forms of these addresses will be described
+below. A number of the commands may also take a trailing
+.I count
+specifying the number of lines to be involved in the command. Thus the command
+\*(lq0x10p\*(rq will print the tenth line in the buffer, while
+\*(lqd5\*(rq will delete five lines from the buffer, starting with the current
+line.
+.PP
+Some commands take other information or parameters, this information will always
+be given after the command name.
+.PP
+It is possible to give the editor commands which are ignored. This is useful
+when making complex editor scripts for which comments are desired. The comment
+character is the double quote ". Any command line beginning with with " is
+ignored. Comments beginning with " may also be placed at the ends of commands.
+.PP
+More than one command may be placed on a line by separating each pair of
+commands by a `|' character.
+.SS Command Addressing
+.PP
+Adressing in
+.I hex
+is performed using a byte offset from the first byte of the file represented
+wity a hexadecimal number between /0/ and /ffffffff/.
+.PP
+Any alphabetical characters used in addressing are only recognized when
+lower-case. This is not out of a sense of individuality, but rather an attempt
+to save time by avoiding pressing the shift key.
+.IP \fB.\fR
+The current offset.
+.IP \fB/\fR\fIn\fR\fB/\fR
+The \fIn\fRth address in the editor's buffer. Addresses are numbered
+sequentially in hexadecimal notation. Because hexadecimal notation contains
+the same characters as commands in
+.I hex,
+hexadecimal numbers are escaped with a pair of forward slashes, \fB//\fR.
+.I Hex
+supports address sizes of up to eight digits, from "/0/" for the first offset
+to "/ffffffff/" for the last offset. This provides valid addressing for files
+up to four gigabytes in size with a single byte word size. Addresses are entered
+without padding meaning "/1a/" is a valid address, but "/0000001a/" is not.
+.IP \fB$\fR
+The last possible offset in the buffer. Because the
+.I word size
+may not always be a factor of the number of bytes in the buffer, the last offset
+may not contain a full block of bytes.
+.IP \fB'\fR\fIname\fR
+An accessor to an address marked with \fBx\fR.
+.IP \fB`\fIpat\fR\fB`\fR\ \fB?\fIpat\fR\fB?\fR
+Scan forward and backward respectively for an offset containing
+.I pat,
+a regular expression (as defined below). When
+.I pat
+is found, the address of the line is "returned" for use with the following
+command syntax. The forms \fB``\fR and \fB??\fR scan using the last regular
+expression used in a scan.
+.IP \fB+/\fR\fIn\fR\fB/\fR,\fB+/\fR\fIn\fR\fB/\fR
+Specifies an offset of addresses from the current address. For example, if the
+current address is /64/, then the address "+/3/" is equivalent to /67/.
+.SS Command Structure
+.PP
+The following is the syntactical structure that all
+.I hex
+commands must follow:
+.RS
+.sp
+\fIaddress\fR,\fIaddress\fR\fBcommand\fR[\fIparameters\fR,
+\fIcount\fR][\fB|, newline, carriage return\fR]
+.sp
+.RE
+Only a single address is required for a complete command. All other parts of a
+command are optional. Any whitespace is ignored.
+.PP
+The degenerate case is the empty command which prints the next word in the file.
+.PP
+Providing only an
+.I address
+will update the current address to
+.I address
+and print the word located there. Providing only a
+.B command
+will modify the buffer with that command at the current address.
+.PP
+Providing only
+.I parameters
+and
+.I count
+will result in
+.I hex
+attempting to parse them as an address which in the best case scenario will
+unintentionally update the current address.
+.PP
+When providing more than one \fIaddress\fR, the two must be separated by a
+\fB,\fR (comma). When only two \fIaddress\fRes are provided, the words between
+the range of addresses are printed without updating the current address. If two
+\fIaddress\fRes are provided before an applicable \fBcommand\fR, the
+\fBcommand\fR is performed on the range of words specified by the two
+\fIaddress\fRes will print the specified range of buffers.
+.PP
+In the following command descriptions, the possible addresses for each command
+are denoted with a "." and separated with a "," in the case of multiple
+addresses being allowed. Range parameters are denoted with, \fIn\fR and
+identifiers are denoted with \fIname\fR.
+.PP
+The default address for any command that accepts an address is the current
+address.
+.LP
+.SS Commands that transfer to text input mode...
+.PP
+.LP
+(\fB.\fR)\fBa\fR
+.RS
+Places bytes after the specified address.
+.RE
+
+.LP
+(\fB.\fR,\fB.\fR)\fBc\fR
+.RS
+Replaces the bytes between the specified offset(s).
+.RE
+
+.LP
+(\fB.\fR)\fBi\fR
+.RS
+Inserts the bytes before the specified address.
+.RE
+
+.LP
+.SS Buffer manipulation commands...
+.PP
+.LP
+(\fB.\fR,\fB.\fR)\fBd\fR\fIname\fR
+.RS
+Removes the specified offset(s) from the buffer. The offset after the last
+offset removed becomes the current line. If a \fIname\fR is provided, the
+removed lines are stored in a temporary named buffer. Otherwise they are
+stored in the volatile buffer. Acceptable \fIname\fRs are five characters long
+and contain only alphanumeric characters. Providing the same identifier more
+than once will append all the following offset(s) to the initial offset(s) in
+the buffer.
+.RE
+
+.LP
+(\fB.\fR,\fB.\fR)\fBy\fR\fIname\fR
+.RS
+Copies the specified offset(s) from the buffer. If a \fIname\fR is provided, the
+copied lines are stored in a temporary named buffer. Otherwise they are
+stored in the volatile buffer. Acceptable \fIname\fRs are five characters long
+and contain only alphanumeric characters. Providing the same identifier more
+than once will append all the following offset(s) to the initial offset(s) in
+the buffer.
+.RE
+
+.LP
+(\fB.\fR)\fBv\fR\fIname\fR(\fIi\fR)
+.RS
+Places the \fIname\fRed buffer before (\fIi\fR) or after the speified
+offset. If no name is given, \fBp\fR places the volatile buffer. If before or
+after is not specified, the default is after. If \fBv\fR is invoked with a
+\fIname\fRd buffer, that buffer will be emptied.
+.RE
+
+.LP
+(\fB.\fR,\fB.\fR)\fBz\fR`\fIpat\fR`\fIrepl\fR`(\fIg\fR,\fIc\fR)
+.RS
+The specified offset(s) are searched as a string against pattern
+\fIpat\fR. The first instance of \fIpat\fR is replaced with the pattern
+\fIrepl\fR. If the option \fIg\fR is provided, all instances are substituted. If
+the option \fIc\fR is provided, then before each substitution the address where
+the matched pattern begins is printed and the character "y" can be entered to
+perform the substitution. This command does not change the current address.
+.RE
+
+.LP
+(\fB.\fR,\fB.\fR)\fBm\fR\fIaddress\fR
+.RS
+Moves the specified offset(s). If no target \fIaddress\fR is provided, the
+command is ignored.
+.RE
+
+.LP
+.SS Editor commands...
+.PP
+.LP
+(\fB.\fR,\fB.\fR)\fBp\fR
+.RS
+Prints the bytes between the specified offsets.
+.RE
+
+.LP
+(\fB.\fR)\fBx\fR\fIname\fR
+.RS
+Marks the address for later access with \fIname\fR, an alphanumeric identifier
+between 1 and 4 characters long.
+.I Hex
+will truncate any name that is longer than four characters.
+.RE
+
+.LP
+\fBu\fR
+.RS
+Reverts the most recent change to the buffer. The most recent change includes
+any previous reversion by \fBu\fR.
+.RE
+
+.LP
+\fBr\fR
+.RS
+The previous file from the argument list is edited. The argument list is handled
+circularly so when the currently edited file is the first one, and \fBr\fR is
+called, the previous file will be the last file on the list.
+.RE
+
+.LP
+\fBo\fR\fIpathname\fR
+.RS
+Adds a new file to the end of the file list. If a file exists at the specified
+\fIpathname\fR, then the contents of that file are read into the buffer.
+.RE
+
+.LP
+\fBs\fR\fIpathname\fR
+.RS
+Opens the file at \fIpathname\fR and reads the contents as command input to the
+editor.
+.RE
+
+.LP
+\fBn\fR
+.RS
+The next file from the argument list is edited. The argument list is handled
+circularly so when the currently edited file is the last one, and \fBn\fR is
+called, the next file will be the first on the list.
+.RE
+
+.LP
+\fBw\fR
+.RS
+Writes the current file to the associated pathname.
+.RE
+
+.LP
+\fBq\fR\fI!\fR
+.RS
+Closes the current file. If the file is `[modified]`, then \fBa\fR will abort
+with a warning unless \fI!\fR is provided.
+.RE
+
+.LP
+\fBf\fR \fIpathname\fR
+.RS
+Prints the current file name, whether it has been `[modified]` since the last
+.I write
+command, whether it is
+.I read only,
+the current offset, the number of bytes in the buffer, and the percentage of the
+buffer relative to the position of the current offset. Providing a
+.I pathname
+will change the pathname of the currently edited file and will always set the
+file to `[not modified]`.
+.RE
+
+.SS Keyword commands...
+.PP
+Keyword commands are multi-character commands that perform operations that are
+either compound or uncommon.
+.PP
+A keyword command is specified by the prefix character "*". Each keyword is
+four characters long.
+
+.LP
+\fBvrsn\fR
+.RS
+Prints the version number of \fIhex\fR.
+.RE
+
+.LP
+\fBargs\fR
+.RS
+Prints the current sfile list.
+.RE
+
+.LP
+\fBsetv\fR\fIvariable\fR=\fIvalue\fR
+.RS
+\fBsetv\fR sets the editor \fIvariable\fR to a new \fIvalue\fR. If the
+\Ivalue\fR is not provided, then the \fIvariable\fR is updated to its default
+value.
+.RE
+
+.LP
+\fBchdr\fR\fIpath\fR
+.RS
+Updates the working directory.
+.RE
+
+.SS Buffers
+.PP
+There are three types of buffers in \fIhex\fR:
+.TP
+File Buffers
+.TP
+Byte Buffers
+.TP
+Volatile Buffers
+.PP
+File Buffers contain bytes read in from a file. They are associated with a
+pathname and are modified with almost all commands.
+.PP
+Byte Buffers contain bytes read in from operations like \fBy\fR and \fBd\fR.
+They are associated with alphanumeric identifier strings between 1 and 4
+characters long.
+.PP
+Volatile Buffers contain bytes from operations like \fBy\fR and \fBd\fR.
+They are associated with a File Buffer. There is one Volatile Buffer for each
+existing File Buffer. The commands \fBy, d,\fR and \fBv\fR operate on Volatile
+Buffers when they aren't supplied with an identifier for a Byte Buffer.
+
+.SS Regular Expressions
+.PP
+Regular expressions are utilized with the \fBz\fR command. A regular expression
+specifies a set of strings of characters (or bytes in the case of \fIhex\fR). A
+member of this set of strings is said to be \fImatched\fR by the regular
+expression. \fIHex\fR remembers two previous regular expressions: the previous
+regular expression used in a \fIz\fR command and the previous regular expression
+used elsewhere (referred to as the previous \fIscanning\fR regular expression).
+The previous regular expression can always be referred to by a null \fIre\fR,
+"//" or "??".
+.PP
+Because \fIhex\fR will be matching regular expressions against positive integer
+values between 0 and 255 rather than alphabetical characters, creating regular
+expressions will happen slightly different: any alphabetical characters are
+automatically treated as metecharacters. Whitespace is ignored. Bytes to be
+matched are given in hexadecimal and escaped with a pair of forward slashes.
+.PP
+.I Hex
+supports POSIX Extended Regular Expressions.
+.PP
+.IP \fIbyte\fR
+A value between "/0/" and "/ff/" which matches itself.
+.IP \fB^\fR
+Matches the starting position of the string.
+.IP \fB[]\fR
+A bracket expression matches a single byte that is contained within the
+brackets. For example, "[/1//2//3/]" matches /1/, /2/, or /3/.
+"[0x1-0x3]" specifies a range which matches any byte from 0x1 to 0x3. These
+forms can be mixed: "[/1//2//3//4/-/6/]" matches /1/, /2/, /3/, /4/, /5/,
+and /6, as does "[/1/-/3//4/-/6/]".
+.IP \fB[^]\fR
+Matches a single byte that is not contained within the brackets. For example,
+"[^/1//2//3]" matches any byte that is not /1/, /2/, or /3/. As above,
+byte ranges can be specified with the "-" character and can be mixed with
+literal bytes.
+.IP \fB$\fR
+Matches the ending position of the string.
+.IP \fB()\fR
+Defines a marked subexpression.
+.IP \fB*\fR
+Matches the preceding element zero or more times.
+.IP \fB{\fR\fIa,b\fR\fB}\fR
+Matches the preceding element at least \fIa\fR, and not more than \fIb\fR times.
+For example, "/1b/{/1/,/3/}" matches only "/1b/", "/1b//1b/", and
+"/1b//1b//1b/".
+.IP \fB?\fR
+Matches the preceding element zero or one time.
+.IP \fB+\fR
+Matches the preceding element one or more times.
+.IP \fB|\fR
+The union operator matches either the expression before, or the expression after
+the operator.
+.SS Regex Character Classes
+.PP
+Character classes allow for a smaller sequence of characters match a larger set
+of characters.
+.I Hex
+supports classes corresponding to the ASCII table. While
+.I hex
+edits files byte-wise, these classes still might be useful for parsing formatted
+sections of the binary file.
+.PP
+.IP \fB[:alnum:]\fR
+Alphanumeric characters
+.IP \fB[:alpha:]\fR
+Alphabetic characters
+.IP \fB[:blank:]\fR
+Space and tab
+.IP \fB[:cntrl:]\fR
+Control Characters
+.IP \fB[:digit:]\fR
+Digits
+.IP \fB[:graph:]\fR
+Visible characters
+.IP \fB[:lower:]\fR
+Lowercase letters
+.IP \fB[:print:]\fR
+Visible characters and the space character
+.IP \fB[:punct:]\fR
+Punctuation characters
+.IP \fB[:space:]\fR
+Whitespace characters
+.IP \fB[:upper:]\fR
+Uppercase characters
+.IP \fB[:xdigit:]\fR
+Hexadecimal digits
