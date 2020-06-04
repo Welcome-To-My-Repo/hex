@@ -1,6 +1,8 @@
 .TH HEX 1 "2020" "Hexadecimal Editor" "Hex User Manual"
 .SH NAME
 hex
+.SH VERSION
+0.1
 .SH SYNOPSIS
 .HP
 .ad 1
@@ -20,6 +22,16 @@ is a line-oriented editor,
 is a byte-word-oriented editor. It groups and accesses series of bytes by a
 variable word length which can be set when invoking the editor, or on the fly
 with a command.
+.PP
+This manual states that
+.I Hex
+supports regular expression matching. However, this is not true for the current
+version of
+.I hex.
+.I Hex,
+version 0.1, only supports basic pattern matching in place of where a regular
+expression would be entered. Support for regular expressions will be implemented
+in a later version.
 .PP
 .I Hex
 takes the following options:
@@ -86,24 +98,22 @@ commands by a `|' character.
 Adressing in
 .I hex
 is performed using a byte offset from the first byte of the file represented
-wity a hexadecimal number between /0/ and /ffffffff/.
+wity a hexadecimal number between 0 and ffffffff.
 .PP
 Any alphabetical characters used in addressing are only recognized when
 lower-case. This is not out of a sense of individuality, but rather an attempt
 to save time by avoiding pressing the shift key.
 .IP \fB.\fR
 The current offset.
-.IP \fB/\fR\fIn\fR\fB/\fR
+.IP \fIn\fR
 The \fIn\fRth address in the editor's buffer. Addresses are numbered
-sequentially in hexadecimal notation. Because hexadecimal notation contains
-the same characters as commands in
-.I hex,
-hexadecimal numbers are escaped with a pair of forward slashes, \fB//\fR.
+sequentially in hexadecimal notation.
 .I Hex
-supports address sizes of up to eight digits, from "/0/" for the first offset
-to "/ffffffff/" for the last offset. This provides valid addressing for files
+supports address sizes of up to eight digits, from 0 for the first offset
+to ffffffff for the last offset. This provides valid addressing for files
 up to four gigabytes in size with a single byte word size. Addresses are entered
-without padding meaning "/1a/" is a valid address, but "/0000001a/" is not.
+without padding, meaning that "1a" is an acceptable entry, but "0000001a" is
+not.
 .IP \fB$\fR
 The last possible offset in the buffer. Because the
 .I word size
@@ -111,17 +121,17 @@ may not always be a factor of the number of bytes in the buffer, the last offset
 may not contain a full block of bytes.
 .IP \fB'\fR\fIname\fR
 An accessor to an address marked with \fBx\fR.
-.IP \fB`\fIpat\fR\fB`\fR\ \fB?\fIpat\fR\fB?\fR
+.IP \fB/\fIpat\fR\fB/\fR\ \fB?\fIpat\fR\fB?\fR
 Scan forward and backward respectively for an offset containing
 .I pat,
 a regular expression (as defined below). When
 .I pat
 is found, the address of the line is "returned" for use with the following
-command syntax. The forms \fB``\fR and \fB??\fR scan using the last regular
+command syntax. The forms \fB//\fR and \fB??\fR scan using the last regular
 expression used in a scan.
 .IP \fB+/\fR\fIn\fR\fB/\fR,\fB+/\fR\fIn\fR\fB/\fR
 Specifies an offset of addresses from the current address. For example, if the
-current address is /64/, then the address "+/3/" is equivalent to /67/.
+current address is 64, then the address "+3" is equivalent to 67.
 .SS Command Structure
 .PP
 The following is the syntactical structure that all
@@ -129,12 +139,13 @@ The following is the syntactical structure that all
 commands must follow:
 .RS
 .sp
-\fIaddress\fR,\fIaddress\fR\fBcommand\fR[\fIparameters\fR,
+\fIaddress\fR,\fIaddress\fR,\fBcommand\fR,[\fIparameters\fR,
 \fIcount\fR][\fB|, newline, carriage return\fR]
 .sp
 .RE
 Only a single address is required for a complete command. All other parts of a
-command are optional. Any whitespace is ignored.
+command are optional. Each component of the command must be separated by either
+a \fB.\fR, tab, or space.
 .PP
 The degenerate case is the empty command which prints the next word in the file.
 .PP
@@ -164,8 +175,7 @@ the range of addresses are printed without updating the current address. If two
 .PP
 In the following command descriptions, the possible addresses for each command
 are denoted with a "." and separated with a "," in the case of multiple
-addresses being allowed. Range parameters are denoted with, \fIn\fR and
-identifiers are denoted with \fIname\fR.
+addresses being allowed. Identifiers are denoted with \fIname\fR.
 .PP
 The default address for any command that accepts an address is the current
 address.

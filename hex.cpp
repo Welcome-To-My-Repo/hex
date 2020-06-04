@@ -125,7 +125,7 @@ int main (int argc, char **argv)
 	tcgetattr (0, &preserve);
 	ui = preserve;
 	ui.c_iflag  &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL | IXON);
-	ui.c_oflag &= ~OPOST;
+	//ui.c_oflag &= ~OPOST;
 	ui.c_lflag  &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
 	ui.c_cflag &= ~(CSIZE | PARENB);
 	ui.c_cflag |= CS8;
@@ -197,10 +197,9 @@ int main (int argc, char **argv)
 			}
 			key == 0;
 		}
-		/*
 		t.str (in);
 
-		while (t >> key)
+		while (t.get(key))
 		{
 			switch (s)
 			{
@@ -216,99 +215,48 @@ int main (int argc, char **argv)
 							break;
 						}
 					}
-				}
-				case 0:
-				{
-					switch (key)
-					{
-						case '.': {s = 0; o[ac] = buffer->o; ac ++; confirm += 1; break;}
-						case '/': {s = 1; count = 0; break;}
-						case 'q': {cmd = key; s = 5; confirm += 3; break;}
-						default: {s = -1; break;}
-					}
 					break;
 				}
-				case 1:
+				case 0: //aggregate an address
 				{
-					if (ac >= 2)
-					{
-						write (1, "?", 1);
-						s = -1;
-						break;
-					}
 					switch (key)
 					{
-						case '0':
-						case '1':
-						case '2':
-						case '3':
-						case '4':
-						case '5':
-						case '6':
-						case '7':
-						case '8':
-						case '9':
-						case 'a':
-						case 'b':
-						case 'c':
-						case 'd':
-						case 'e':
-						case 'f':
+						case '.':
 						{
-							if (count < 8)
+							if (ac < 2)
 							{
-								a[count] = key;
-							}
-							else
-							{
-								write (1, "?", 1);
-								s = -1;
+								o[ac] = buffer->o;
+								ac ++;
+								s = 1;
 							}
 							break;
 						}
-						case '/':
+						case 'q':
 						{
-							t.str ("");
-							t << std::hex << a;
-							t >> o[ac];
-							ac ++;
-							if (ac == 2)
-								s = 2;
-							else
-								s = 0;
+							cmd = key;
+							s = 5;
+							confirm += 3;
 							break;
 						}
-						break;
 					}
 					break;
 				}
-				case 2:
+				case 1: //aggregate a command
+				{
+					break;
+				}
+				case 5: //aggregate an option
 				{
 					switch (key)
 					{
-						case 'a': break;
-						default:
+						case 'i':
 						{
-							s = -1;
-							write (1, "?", 1);
+							opt = i;
+
 						}
 					}
-				}
-				case 3: break;
-				case 4: break;
-				case 5:
-				{
-					switch (key)
-					{
-						case 'i': {opt = key; break;}
-					}
-					r = false;
 					break;
 				}
-				case 6: break;
-				case 7: break;
-				case 8: break;
-				case 9: break;
 			}
 		}
 		t.str ("");
@@ -353,7 +301,7 @@ int main (int argc, char **argv)
 		count = 0;
 		confirm = 0;
 		cmd = 0;
-		*/
+
 	}
 	return 0;
 }
