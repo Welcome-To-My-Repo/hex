@@ -137,6 +137,7 @@ int main (int argc, char **argv)
 	buffer = &files.at(current_buffer);
 
 	tcgetattr (STDIN_FILENO, &preserve);
+/*
 	editor = preserve;
 	editor.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
         editor.c_oflag &= ~OCRNL;
@@ -155,6 +156,10 @@ int main (int argc, char **argv)
 	for (int i = 0; i < w.ws_row; i ++)
 		t << '\n';
 	write (1, t.str ().c_str (), t.str ().size ());
+*/
+	ioctl (STDOUT_FILENO, TIOCGWINSZ, &w);
+	for (int i = 0; i < w.ws_row; i++)
+		std::cout << '\n';
 	/*
 	* simple state machine that parses the input, populates the command
 	* structure variables, and executes the specified commands.
@@ -178,7 +183,7 @@ int main (int argc, char **argv)
 	char cmd = 0, opt[2], a[8], name[4], key = 0, keyword[4], mk[4];
 	std::string rx[2], path, prx[2], in;
 	std::stringstream out;
-	while (read (0, &key, 1) != -1)
+	while (std::cin.get(key))
 	{
 		if (key == 0) continue;
 		else if (key == 8 or key == 127)
@@ -195,10 +200,8 @@ int main (int argc, char **argv)
 			in.push_back ('\n');
 			write (1, "\n", 1);
 			t.str (in);
-			while (1)
+			while (t.get(key))
 			{
-				key = 0;
-				t.get(key)
 				switch (s)
 				{
 					case -1:
@@ -220,7 +223,7 @@ int main (int argc, char **argv)
 							case 'a':
 							case 'c':
 							case 'i':
-								{cmd = key; execute (o, ac, cmd, opt, name, keyword, rx, path, prx); break;}
+								{cmd = key; break;}
 
 							case 'd':
 							case 'y':
@@ -239,7 +242,7 @@ int main (int argc, char **argv)
 							case 'r':
 							case 'u':
 							case 'w':
-								{cmd = key; execute (o, ac, cmd, opt, name, keyword, (std::string *)rx, path, prx); break;}
+								{cmd = key; break;}
 
 							case 'o':
 							case 's':
@@ -347,7 +350,6 @@ int main (int argc, char **argv)
 					}
 					case 9:
 					{
-						execute (o, ac, cmd, opt, name, keyword, (std::string *)rx, path, prx);
 						break;
 					}
 				}
