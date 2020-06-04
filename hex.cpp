@@ -84,28 +84,19 @@ int rfind (std::string r);
 //regex replace
 void rrplace (std::string r);
 
+//data for undo command
+std::string ub; //holds buffer of last bytes added or removed
+int uo, ul; //holds the (o)ffset the last command acted on and the (l)ength of bytes
+bool ua; //true if the last operation added bytes, false if bytes were removed
+
 int main (int argc, char **argv)
 {
-	int current_buffer = 0, pos, count, s;
+	int current_buffer = 0, pos;
 	std::string c, tmp;
-	char key[1], g;
+	char g;
 	std::fstream fs;
 	std::stringstream sts, t;
 	winsize w;
-
-	//command argument variables
-	//addresses are
-	//-1 for the current offset
-	//-2 for the last line
-	//-3 for the entire buffer
-	int o[3];
-	int o1, o2, o3; //addresses are -1 for '$'
-	std::string regex1, regex2, path, pregex1, pregex2;
-	char cmd[1], opt[2], a[8], name[4];
-	bool addr; //true after first delimiting slash is encountered.
-	int ac; //incremented every time an address is populated
-	bool succ; //true if a mark or byte buffer is located
-	bool cmd; //true if a command has been parsed
 
 	if (argc > 1)
 	{
@@ -152,219 +143,234 @@ int main (int argc, char **argv)
 	t.str ("");
 	for (int i = 0; i < w.ws_row; i ++)
 		t << '\n';
-	t << ':';
 	write (1, t.str ().c_str (), t.str ().size ());
 	/*
 	* simple state machine that parses the input, populates the command
 	* structure variables, and executes the specified commands.
 	* s specifies the current state:
-	* -1 error state, reads until next command
-	* 0 neutral state
-	* 1 read hexadecimal address
-	* 2 read named address
-	* 3 command
-	* 4 third address
-	* 5 name
-	* 6 pathname
-	* 7 keyword command
+	* -1: error state, continue to next command
+	* 0: init
+	* 1: aggregate an address
+	* 2: aggregate a command
+	* 3: aggregate a name
+	* 4: aggregate a mark
+	* 5: aggregate an option
+	* 6: regular expression search address
+	* 7: aggregate a regular expression
+	* 8: aggregate keyword command
+	* 9: execute
+	* 10: aggregate pathname
 	*/
-	key[0] = 0;
-	ac = 0;
-	addr = false;
-	s = 0;
-	count = 0;
-	while (read (0, key, 1) != 0)
+	int o[3], ac = 0, rc = 0, s = 0, count = 0;
+	bool addr = false, succ = false, sd;
+	char cmd, opt[2], a[8], name[4], key = 0, kwc[4], mk[4];
+	std::string rx[2], path, prx[2], in;
+	std::stringstream out;
+	while (read (0, &key, 1) != -1)
 	{
-		if (key[0] == 0)
-			continue;
-		switch (m)
+		if (key == 0) continue;
+		else if (key == 8 or key == 127)
 		{
-			case -1:
+			if (in.size () > 0)
 			{
-				switch (key[0])
-				{
-					case '\n':
-					case '\r':
-					case '|':
-					{
-						m = 0;
-					}
-				}
-			}
-			case 0:
-			{
-				switch (key[0])
-				{
-					case '.': {break;}
-					case '/': {addr = true; m = 1; break;}
-					case '$': {break;}
-					case '%': {break;}
-					case '\'' {break;}
-					case '`': {break;}
-					case '?': {break;}
-					case '+': {break;}
-					case '-': {break;}
-					case 'a':
-					case 'c':
-					case 'i':
-					case 'd':
-					case 'y':
-					case 'v':
-					case 'z':
-					case 'm':
-					case 'p':
-					case 'x':
-					case ''
-				}
-			}
-			case 1:
-			{
-				switch (key[0])
-				{
-					case '/':
-					{
-						if (addr and count == 0)
-						{
-							write (1, "?", 1);
-							m = -1;
-						}
-						if (addr and count > 0)
-						{
-							m = 0;
-							count = 0;
-							sscanf (a, "%x", &o1);
-						}
-						else
-						{
-							addr = true;
-						}
-					}
-					case '0':
-					case '1':
-					case '2':
-					case '3':
-					case '4':
-					case '5':
-					case '6':
-					case '7':
-					case '8':
-					case '9':
-					case 'a':
-					case 'b':
-					case 'c':
-					case 'd':
-					case 'e':
-					case 'f':
-					{
-						if (count < 8)
-						{
-							a[count] = k[0];
-							count ++;
-						}
-						else
-						{
-							write (1, "?", 1);
-							m = -1;
-						}
-					}
-				}
-			}
-			case 2:
-			{
-				if (count < 4)
-				{
-					if (k[0] > 32 and k[0] < 127)
-					{
-						name[count] = k[0];
-					}
-					else
-					{
-						write (1, "?", 1);
-						m = -1;
-					}
-				}
-				else
-				{
-					succ = false;
-					for (int i = 0; i < buffer->m.size (); i ++)
-					{
-						if (strncmp (name, buffer->m[i].n) == 0)
-						{
-							succ = true;
-							if (ac < 3)
-							{
-								o[ac] = buffer->m[i].o;
-							}
-							else
-							{
-								write (1, "?", 1);
-								m = -1;
-							}
-						}
-					}
-				}
+				in.pop_back ();
+				out << "\x1b[2K\r" << in;
+				write (1, out.str ().c_str (), out.str ().size ());
 			}
 		}
-		//execute command here
-	}
-
-		t.str ("");
-		key[0] = 0;
-		read (0, key, 1);
-		if (key[0] == 0)
+		else if (key == 10 or key == 13)
 		{
-			continue;
-		}
-		else if (key[0] == 10 or key[0] == 13)
-		{
+			in.push_back ('\n');
 			write (1, "\n", 1);
-			if (c.size () == 0)
+			t.str (in);
+			while (t.get (key))
 			{
-				printo ();
-				buffer->o ++;
-			}
-			else
-			{
-				sts.str (c);
-				/*
-				* simple state machine that parses the input
-				* and populates the
-				* m speifies the current state (mode)
-				* 0 = error
-				* 1 = populate first address
-				*/
-				int m = 0, addrcount = 0;
-				while (sts.get (g))
+				switch (s)
 				{
-					switch (g)
+					case -1:
 					{
-						case '0':
-						{
-
-							break;
-						}
+						break;
 					}
-					switch (m)
+					case 0:
+					{
+						switch (key)
+						{
+							case '.': {o[ac] = buffer->o; ac ++; s = 1; break;}
+							case '$': {o[ac] = buffer->b.size () - 1; ac ++; break;}
+							case '\'': {s = 4; break;}
+							case '`': {s = 6; sd = true; break;}
+							case '?': {s = 6; sd = false; break;}
+							case '+': {o[ac] = buffer->o; break;}
+							case '-': {o[ac] -= buffer->o; break;}
+							case 'a':
+							case 'c':
+							case 'i':
+								{cmd = key; s = 9; break;}
+
+							case 'd':
+							case 'y':
+							case 'v':
+							case 'x':
+								{cmd = key; s = 3; break;}
+
+							case 'z': {cmd = key; s = 7; break;}
+
+							case 'm': {cmd = key; s = 1; break;}
+
+							case 'q': {cmd = key; count = 0; s = 5; break;}
+
+							case 'n':
+							case 'p':
+							case 'r':
+							case 'u':
+							case 'w':
+								{s = 9; break;}
+
+							case 'o':
+							case 's':
+							case 'f':
+								{s = 10; break;}
+
+							default: {s = -1; write (1, "?", 1); break;}
+						}
+						break;
+					}
+					case 1:
+					{
+						switch (key)
+						{
+							case '0':
+							case '1':
+							case '2':
+							case '3':
+							case '4':
+							case '5':
+							case '6':
+							case '7':
+							case '8':
+							case '9':
+							case 'a':
+							case 'b':
+							case 'c':
+							case 'd':
+							case 'e':
+							case 'f':
+								{a[count] = key; break;}
+						}
+						break;
+					}
+					case 2:
+					{
+						break;
+					}
+					case 3:
+					{
+						break;
+					}
+					case 4:
+					{
+						break;
+					}
+					case 5:
+					{
+						switch (key)
+						{
+							case 'i': {o[count] = key; s = 9; break;}
+							case 'g':
+							{
+								if (count < 2)
+								{
+									o[count] = key;
+									count ++;
+									s = 5;
+								}
+								else
+								{
+									write (1, "?", 1);
+								}
+								break;
+							}
+							case 'c':
+							{
+								if (count < 2)
+								{
+									o[count] = key;
+									count ++;
+									s = 5;
+								}
+								else
+								{
+									write (1, "?", 1);
+								}
+								break;
+							}
+							case '!':
+							{
+								o[count] = key;
+								s = 9;
+								break;
+							}
+							case '\n':
+							{
+								s = 9;
+								break;
+							}
+						}
+						break;
+					}
+					case 6:
+					{
+						break;
+					}
+					case 7:
+					{
+						break;
+					}
+					case 8:
+					{
+						break;
+					}
+					case 10:
+					{
+						break;
+					}
+					case 9:
+					{
+						switch (cmd)
+						{
+							case 'q':
+							{
+								if (buffer->e and o[0] == '!')
+								{
+									restore ();
+								}
+								else if (!buffer->e)
+								{
+									restore ();
+								}
+								else
+								{
+									restore ();
+								}
+								break;
+							}
+						}
+						break;
+					}
 				}
-			}
-			c.clear ();
-			write (1, "\n", 1);
-		}
-		else if (key[0] == 127 or key[0] == 8)
-		{
-			if (c.size () > 0)
-			{
-				c.pop_back ();
-				t << "\x1b[2K\r:" << c;
-				write (1, t.str ().c_str (), t.str ().size ());
+				in.clear ();
 			}
 		}
 		else
 		{
-			c.push_back (key[0]);
-			write (1, key, 1);
+			in.push_back (key);
+			out << "\x1b[2K\r" << in;
+			write (1, out.str ().c_str (), out.str ().size ());
 		}
+		out.str ("");
+		key = 0;
 	}
+	return 0;
 }
 
 void restore ()
@@ -521,7 +527,7 @@ std::string getText ()
 				write (STDOUT_FILENO, "|", 1);
 				for (int i = 0; i < 16; i ++)
 				{
-					p[0] = buffer.at(buffer.size () - word_size + i);
+					p[0] = buffer.at(buffer.size () - 16 + i);
 					if (p[0] > 31 and p[0] < 177)
 						write (STDOUT_FILENO, p, 1);
 					else
@@ -558,7 +564,7 @@ void printo ()
 			{
 				s << "~~";
 			}
-			if (i < word_size - 1)
+			if (i < 16 - 1)
 				s << '-';
 		}
 		s << '|';

@@ -86,7 +86,7 @@ commands by a `|' character.
 Adressing in
 .I hex
 is performed using a byte offset from the first byte of the file represented
-wity a hexadecimal number between /0/ and /ffffffff/. 
+wity a hexadecimal number between /0/ and /ffffffff/.
 .PP
 Any alphabetical characters used in addressing are only recognized when
 lower-case. This is not out of a sense of individuality, but rather an attempt
@@ -109,8 +109,6 @@ The last possible offset in the buffer. Because the
 .I word size
 may not always be a factor of the number of bytes in the buffer, the last offset
 may not contain a full block of bytes.
-.IP \fB%\fR
-An abbreviation for "/0/,$"; the entire buffer.
 .IP \fB'\fR\fIname\fR
 An accessor to an address marked with \fBx\fR.
 .IP \fB`\fIpat\fR\fB`\fR\ \fB?\fIpat\fR\fB?\fR
@@ -135,7 +133,8 @@ commands must follow:
 \fIcount\fR][\fB|, newline, carriage return\fR]
 .sp
 .RE
-All components of this structure are optional. Whitespace is ignored.
+Only a single address is required for a complete command. All other parts of a
+command are optional. Any whitespace is ignored.
 .PP
 The degenerate case is the empty command which prints the next word in the file.
 .PP
@@ -227,7 +226,7 @@ after is not specified, the default is after. If \fBv\fR is invoked with a
 .RE
 
 .LP
-(\fB.\fR,\fB.\fR)\fBz\fR/\fIpat\fR/\fIrepl\fR/(\fIg\fR,\fIc\fR)
+(\fB.\fR,\fB.\fR)\fBz\fR`\fIpat\fR`\fIrepl\fR`(\fIg\fR,\fIc\fR)
 .RS
 The specified offset(s) are searched as a string against pattern
 \fIpat\fR. The first instance of \fIpat\fR is replaced with the pattern
