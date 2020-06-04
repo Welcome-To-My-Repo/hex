@@ -175,14 +175,16 @@ int main (int argc, char **argv)
 	while (1)
 	{
 		//while (read (0, &key, 1) != -1)
-		while (std::cin.get(key))
+		while (read (0, &key, 1) != -1)
 		{
+			t.str ("");
 			//in.push_back (key);
 			if (key == 8 or key == 127)
 			{
 				if (in.size () > 0)
 					in.pop_back ();
-				std::cout << "\x1b[2K\r" << in;
+				t << "\x1b[2K\r" << in;
+				write (1, t.str().c_str (), t.str().size ())
 			}
 			else if (key == 10 or key == 13)
 			{
