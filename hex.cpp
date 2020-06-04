@@ -84,6 +84,17 @@ int rfind (std::string r);
 //regex replace
 void rrplace (std::string r);
 
+void execute (
+	int *o = 0,
+	int ac = 0,
+	char cmd = 0,
+	char *opt = 0,
+	char *name = 0,
+	char *keyword = 0,
+	std::string *rx = 0,
+	std::string path = "",
+	std::string *prx = 0);
+
 //data for undo command
 std::string ub; //holds buffer of last bytes added or removed
 int uo, ul; //holds the (o)ffset the last command acted on and the (l)ength of bytes
@@ -161,9 +172,10 @@ int main (int argc, char **argv)
 	* 9: execute
 	* 10: aggregate pathname
 	*/
+	//void execute (int *o, int ac, char cmd, char *name, char *keyword, std::string *rx, std::string path, std::string *prx)
 	int o[3], ac = 0, rc = 0, s = 0, count = 0;
 	bool addr = false, succ = false, sd;
-	char cmd, opt[2], a[8], name[4], key = 0, kwc[4], mk[4];
+	char cmd = 0, opt[2], a[8], name[4], key = 0, keyword[4], mk[4];
 	std::string rx[2], path, prx[2], in;
 	std::stringstream out;
 	while (read (0, &key, 1) != -1)
@@ -183,8 +195,10 @@ int main (int argc, char **argv)
 			in.push_back ('\n');
 			write (1, "\n", 1);
 			t.str (in);
-			while (t.get (key))
+			while (1)
 			{
+				key = 0;
+				t.get(key)
 				switch (s)
 				{
 					case -1:
@@ -195,6 +209,7 @@ int main (int argc, char **argv)
 					{
 						switch (key)
 						{
+							case 0: {write (1, "?", 1); break;}
 							case '.': {o[ac] = buffer->o; ac ++; s = 1; break;}
 							case '$': {o[ac] = buffer->b.size () - 1; ac ++; break;}
 							case '\'': {s = 4; break;}
@@ -205,7 +220,7 @@ int main (int argc, char **argv)
 							case 'a':
 							case 'c':
 							case 'i':
-								{cmd = key; s = 9; break;}
+								{cmd = key; execute (o, ac, cmd, opt, name, keyword, rx, path, prx); break;}
 
 							case 'd':
 							case 'y':
@@ -224,7 +239,7 @@ int main (int argc, char **argv)
 							case 'r':
 							case 'u':
 							case 'w':
-								{s = 9; break;}
+								{cmd = key; execute (o, ac, cmd, opt, name, keyword, (std::string *)rx, path, prx); break;}
 
 							case 'o':
 							case 's':
@@ -330,36 +345,15 @@ int main (int argc, char **argv)
 					{
 						break;
 					}
-					case 10:
-					{
-						break;
-					}
 					case 9:
 					{
-						switch (cmd)
-						{
-							case 'q':
-							{
-								if (buffer->e and o[0] == '!')
-								{
-									restore ();
-								}
-								else if (!buffer->e)
-								{
-									restore ();
-								}
-								else
-								{
-									restore ();
-								}
-								break;
-							}
-						}
+						execute (o, ac, cmd, opt, name, keyword, (std::string *)rx, path, prx);
 						break;
 					}
 				}
 				in.clear ();
 			}
+			execute (o, ac, cmd, opt, name, keyword, (std::string *)rx, path, prx);
 		}
 		else
 		{
@@ -640,4 +634,44 @@ void printo (int b)
 		s << "Buffer is empty!";
 	}
 	write (1, s.str ().c_str (), s.str ().size ());
+}
+
+void execute (
+	int *o,
+	int ac,
+	char cmd,
+	char *opt,
+	char *name,
+	char *keyword,
+	std::string *rx,
+	std::string path,
+	std::string *prx)
+{
+	if (ac == 0 and cmd == 0)
+	{
+		write (1, "?", 1);
+		return;
+	}
+	else if (ac = 0 and cmd != 0)
+	{
+		switch (cmd)
+		{
+			case 'q':
+			{
+				if (buffer->e and opt[0] == '!')
+					restore ();
+				else if (!buffer->e)
+					restore ();
+				else
+				{
+					write (1, "?", 1);
+					return;
+				}
+			}
+		}
+	}
+	else
+	{
+
+	}
 }
