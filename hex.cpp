@@ -6,12 +6,8 @@
 #include <iomanip>
 #include <charconv>
 
-#include <fcntl.h>
-#include <errno.h>
-#include <pwd.h>
 #include <termios.h>
 #include <unistd.h>
-#include <signal.h>
 
 #include <sys/types.h>
 #include <sys/param.h>
@@ -58,8 +54,10 @@ struct mark
 	char n[4];
 	int o;
 };
-//termios states
-termios editor, preserve;
+
+//terminal states
+termios ui, preserve;
+
 //points to file being edited
 file_buffer *buffer;
 //list of files given in arguments
@@ -107,11 +105,10 @@ int main (int argc, char **argv)
 	char g;
 	std::fstream fs;
 	std::stringstream sts, t;
-	winsize w;
 
 	if (argc > 1)
 	{
-		for (int i = 0; i < argc - 1; i ++)
+		for (int i = 1; i < argc; i ++)
 		{
 			files.emplace_back ();
 			files.back ().p = argv[i];
@@ -134,32 +131,14 @@ int main (int argc, char **argv)
 		files.emplace_back ();
 	}
 
-	buffer = &files.at(current_buffer);
+	buffer = &files.front ();
 
-	tcgetattr (STDIN_FILENO, &preserve);
-/*
-	editor = preserve;
-	editor.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
-        editor.c_oflag &= ~OCRNL;
-        editor.c_oflag |= OPOST;
-        editor.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
-        editor.c_cflag |= CS8;
-        editor.c_cc[VMIN] = 0;
-        editor.c_cc[VTIME] = 1;
-	if (tcsetattr (STDIN_FILENO, TCSAFLUSH, &editor) == -1)
-	{
-		perror (terr);
-		exit (1);
-	}
-	ioctl (STDOUT_FILENO, TIOCGWINSZ, &w);
-	t.str ("");
-	for (int i = 0; i < w.ws_row; i ++)
-		t << '\n';
-	write (1, t.str ().c_str (), t.str ().size ());
-*/
-	ioctl (STDOUT_FILENO, TIOCGWINSZ, &w);
-	for (int i = 0; i < w.ws_row; i++)
-		std::cout << '\n';
+	tcgetattr (0, &preserve);
+	ui = preserve;
+	ui.c_lflag &= ~ECHO;
+	ui.c_iflag |= ICRNL;
+	tcsetattr (0, TCSANOW, &ui);
+
 	/*
 	* simple state machine that parses the input, populates the command
 	* structure variables, and executes the specified commands.
@@ -174,204 +153,141 @@ int main (int argc, char **argv)
 	* 6: regular expression search address
 	* 7: aggregate a regular expression
 	* 8: aggregate keyword command
-	* 9: execute
-	* 10: aggregate pathname
+	* 9: aggregate pathname
 	*/
 	//void execute (int *o, int ac, char cmd, char *name, char *keyword, std::string *rx, std::string path, std::string *prx)
 	int o[3], ac = 0, rc = 0, s = 0, count = 0;
-	bool addr = false, succ = false, sd;
-	char cmd = 0, opt[2], a[8], name[4], key = 0, keyword[4], mk[4];
+	bool addr = false, succ = false, r = true;
+	int confirm = 0;
+	/* confirm signifies which components exist in the command
+	* first address +1
+	* second address +1
+	* command +3
+	*/
+	char 	cmd = 0,
+		opt = 0,
+		a[8] = {0,0,0,0,0,0,0,0},
+		name[4] = {0,0,0,0},
+		key = 0,
+		keyword[4] = {0,0,0,0},
+		mk[4] = {0,0,0,0};
 	std::string rx[2], path, prx[2], in;
 	std::stringstream out;
-	while (std::cin.get(key))
+	while (1)
 	{
-		if (key == 0) continue;
-		else if (key == 8 or key == 127)
+		//while (read (0, &key, 1) != -1)
+		while (std::cin.get(key))
 		{
-			if (in.size () > 0)
+			//in.push_back (key);
+			if (key == 8 or key == 127)
 			{
-				in.pop_back ();
-				out << "\x1b[2K\r" << in;
-				write (1, out.str ().c_str (), out.str ().size ());
+				if (in.size () > 0)
+					in.pop_back ();
+				std::cout << "\x1b[2K\r" << in;
+			}
+			else if (key == 10 or key == 13)
+			{
+				//std::cout << '\r';
+				break;
+			}
+			else
+			{
+				in.push_back (key);
+				//std::cout << key;
 			}
 		}
-		else if (key == 10 or key == 13)
+		t.str (in);
+		while (t >> key)
 		{
-			in.push_back ('\n');
-			write (1, "\n", 1);
-			t.str (in);
-			while (t.get(key))
+			switch (s)
 			{
-				switch (s)
+				case -1:
 				{
-					case -1:
+					switch (key)
 					{
-						break;
-					}
-					case 0:
-					{
-						switch (key)
+						case '\n':
+						case '\r':
+						case '|':
 						{
-							case 0: {write (1, "?", 1); break;}
-							case '.': {o[ac] = buffer->o; ac ++; s = 1; break;}
-							case '$': {o[ac] = buffer->b.size () - 1; ac ++; break;}
-							case '\'': {s = 4; break;}
-							case '`': {s = 6; sd = true; break;}
-							case '?': {s = 6; sd = false; break;}
-							case '+': {o[ac] = buffer->o; break;}
-							case '-': {o[ac] -= buffer->o; break;}
-							case 'a':
-							case 'c':
-							case 'i':
-								{cmd = key; break;}
-
-							case 'd':
-							case 'y':
-							case 'v':
-							case 'x':
-								{cmd = key; s = 3; break;}
-
-							case 'z': {cmd = key; s = 7; break;}
-
-							case 'm': {cmd = key; s = 1; break;}
-
-							case 'q': {cmd = key; count = 0; s = 5; break;}
-
-							case 'n':
-							case 'p':
-							case 'r':
-							case 'u':
-							case 'w':
-								{cmd = key; break;}
-
-							case 'o':
-							case 's':
-							case 'f':
-								{s = 10; break;}
-
-							default: {s = -1; write (1, "?", 1); break;}
+							s = 0;
+							break;
 						}
-						break;
-					}
-					case 1:
-					{
-						switch (key)
-						{
-							case '0':
-							case '1':
-							case '2':
-							case '3':
-							case '4':
-							case '5':
-							case '6':
-							case '7':
-							case '8':
-							case '9':
-							case 'a':
-							case 'b':
-							case 'c':
-							case 'd':
-							case 'e':
-							case 'f':
-								{a[count] = key; break;}
-						}
-						break;
-					}
-					case 2:
-					{
-						break;
-					}
-					case 3:
-					{
-						break;
-					}
-					case 4:
-					{
-						break;
-					}
-					case 5:
-					{
-						switch (key)
-						{
-							case 'i': {o[count] = key; s = 9; break;}
-							case 'g':
-							{
-								if (count < 2)
-								{
-									o[count] = key;
-									count ++;
-									s = 5;
-								}
-								else
-								{
-									write (1, "?", 1);
-								}
-								break;
-							}
-							case 'c':
-							{
-								if (count < 2)
-								{
-									o[count] = key;
-									count ++;
-									s = 5;
-								}
-								else
-								{
-									write (1, "?", 1);
-								}
-								break;
-							}
-							case '!':
-							{
-								o[count] = key;
-								s = 9;
-								break;
-							}
-							case '\n':
-							{
-								s = 9;
-								break;
-							}
-						}
-						break;
-					}
-					case 6:
-					{
-						break;
-					}
-					case 7:
-					{
-						break;
-					}
-					case 8:
-					{
-						break;
-					}
-					case 9:
-					{
-						break;
 					}
 				}
-				in.clear ();
+				case 0:
+				{
+					switch (key)
+					{
+						case '.': {s = 0; o[ac] = buffer->o; ac ++; confirm += 1; break;}
+						case 'q': {cmd = key; s = 5; confirm += 3; break;}
+						default: {s = -1; break;}
+					}
+					break;
+				}
+				case 1: break;
+				case 2: break;
+				case 3: break;
+				case 4: break;
+				case 5:
+				{
+					switch (key)
+					{
+						case 'i': {opt = key; break;}
+					}
+					r = false;
+					break;
+				}
+				case 6: break;
+				case 7: break;
+				case 8: break;
+				case 9: break;
 			}
-			execute (o, ac, cmd, opt, name, keyword, (std::string *)rx, path, prx);
 		}
-		else
+		t.clear ();
+		switch (confirm)
 		{
-			in.push_back (key);
-			out << "\x1b[2K\r" << in;
-			write (1, out.str ().c_str (), out.str ().size ());
+			case 0:
+			{
+				printo();
+				if (buffer->o + 16 < buffer->b.size ())
+					buffer->o += 16;
+				break;
+			}
+			case 1:
+			{
+				break;
+			}
+			case 2: break;
+			case 3:
+			{
+				switch (cmd)
+				{
+					case 'q':
+					{
+						if (buffer->e and opt == '!')
+							restore ();
+						else if (!buffer->e)
+							restore ();
+						else
+							std::cout << "!";
+					}
+				}
+			}
+			case 4: break;
+			case 5: break;
 		}
-		out.str ("");
-		key = 0;
+		o[0] = 0;
+		o[1] = 0;
+		o[2] = 0;
+		confirm = 0;
+		cmd = 0;
 	}
 	return 0;
 }
 
 void restore ()
 {
-	tcsetattr (STDIN_FILENO, TCSAFLUSH, &preserve);
+	tcsetattr (0, TCSANOW, &preserve);
 	exit (0);
 }
 
@@ -391,7 +307,7 @@ char toC (char *h)
 
 char * toH (char c)
 {
-	char *x = new char[2];
+	char *x = new char[3];
 	x[0] = c / 16;
 	x[1] = c % 16;
 	if (x[0] > 9)
@@ -402,6 +318,7 @@ char * toH (char c)
 		x[1] += 87;
 	else
 		x[1] += 48;
+	x[2] = '\0';
 	return x;
 }
 
@@ -423,7 +340,7 @@ std::string getText ()
 	std::string buffer;
 	int word_counter, hex_counter = 0;
 	std::stringstream sts;
-	char key[1] = {0}, hex[2] = {48, 48}, t[1];
+	char key = 0, hex[2] = {48, 48}, t[1];
 	while (1)
 	{
 		sts.str ("");
@@ -436,76 +353,68 @@ std::string getText ()
 			<< word_counter
 			<< '|'
 			<< "\x1b[0m";
-		write (STDOUT_FILENO, sts.str ().c_str (), sts.str ().size ());
+		std::cout << sts.str ();
 		sts << std::flush;
 		while (1)
 		{
-			key[0] = 0;
-			while (key[0] == 0)
+			key = 0;
+			while (key == 0)
 			{
-				if (read (STDIN_FILENO, key, 1) == -1 and errno != EAGAIN)
+				if (!std::cin.get(key))
 				{
 					perror ("Read error");
 					exit (5);
 				}
-				if (key[0] > 47 and key[0] < 58)
+				if (key > 47 and key < 58)
 				{
-					write (STDOUT_FILENO, key, 1);
-					hex[0] = key[0];
+					hex[0] = key;
 				}
-				else if (key[0] > 96 and key[0] < 103)
+				else if (key > 96 and key < 103)
 				{
-					write (STDOUT_FILENO, key, 1);
-					hex[0] = key[0];
+					hex[0] = key;
 				}
-				else if (key[0] > 64 and key[0] < 71)
+				else if (key > 64 and key < 71)
 				{
-					key[0] += 32;
-					write (STDOUT_FILENO, key, 1);
-					hex[0] = key[0];
+					key += 32;
+					hex[0] = key;
 				}
-				else if (key[0] == '.')
+				else if (key == '.')
 				{
-					write (STDOUT_FILENO, ".", 1);
 					return buffer;
 				}
 				else
 				{
-					key[0] = 0;
+					key = 0;
 				}
 			}
-			key[0] = 0;
-			while (key[0] == 0)
+			key = 0;
+			while (key == 0)
 			{
-				if (read (STDIN_FILENO, key, 1) == -1 and errno != EAGAIN)
+				if (!std::cin.get (key))
 				{
 					perror ("Read error!");
 					exit (5);
 				}
-				if (key[0] > 47 and key[0] < 58)
+				if (key > 47 and key < 58)
 				{
-					write (STDOUT_FILENO, key, 1);
-					hex[0] = key[0];
+					hex[0] = key;
 				}
-				else if (key[0] > 96 and key[0] < 103)
+				else if (key > 96 and key < 103)
 				{
-					write (STDOUT_FILENO, key, 1);
-					hex[0] = key[0];
+					hex[0] = key;
 				}
-				else if (key[0] > 64 and key[0] < 71)
+				else if (key > 64 and key < 71)
 				{
-					key[0] += 32;
-					write (STDOUT_FILENO, key, 1);
-					hex[0] = key[0];
+					key += 32;
+					hex[0] = key;
 				}
-				else if (key[0] == '.')
+				else if (key == '.')
 				{
-					write (STDOUT_FILENO, ".", 1);
 					return buffer;
 				}
 				else
 				{
-					key[0] = 0;
+					key = 0;
 				}
 			}
 			t[0] = toC (hex);
@@ -513,23 +422,23 @@ std::string getText ()
 			hex_counter ++;
 			if (hex_counter < 16)
 			{
-				write (STDOUT_FILENO, "-", 1);
+				std::cout << '-';
 			}
 			else
 			{
 				hex_counter = 0;
 				word_counter ++;
 				char p[1];
-				write (STDOUT_FILENO, "|", 1);
+				std::cout << '|';
 				for (int i = 0; i < 16; i ++)
 				{
 					p[0] = buffer.at(buffer.size () - 16 + i);
 					if (p[0] > 31 and p[0] < 177)
-						write (STDOUT_FILENO, p, 1);
+						std::cout << p;
 					else
-						write (STDOUT_FILENO, ".", 1);
+						std::cout << '.';
 				}
-				write (STDOUT_FILENO, "\n", 1);
+				std::cout << '\n';
 				break;
 			}
 		}
@@ -543,7 +452,6 @@ void printo ()
 	if (buffer->b.size () > 0)
 	{
 		s
-			//<< "0x"
 			<< std::hex
 			<< std::setw (8)
 			<< std::right
@@ -558,7 +466,10 @@ void printo ()
 			}
 			else
 			{
-				s << "~~";
+				s << "EOF";
+				for (int j = 0; j < 16 - i; j++)
+					s << "   ";
+				break;
 			}
 			if (i < 16 - 1)
 				s << '-';
@@ -575,21 +486,24 @@ void printo ()
 			}
 			else
 			{
-				s << ' ';
+				s << '-';
 			}
 		}
 		s << '.';
 	}
 	else
 	{
-		s << "Buffer is empty!";
+		s << "!";
 	}
-	write (1, s.str ().c_str (), s.str ().size ());
+	s << "\n";
+	std::cout << s.str ();
+	//std::cout << "\n\r";
 }
 
 void printo (int b)
 {
 	std::stringstream s;
+	char h[2];
 	s.str ("");
 	if (buffer->b.size () > 0)
 	{
@@ -601,41 +515,41 @@ void printo (int b)
 			<< std::setfill ('0')
 			<< b
 			<< '|';
+		std::cout << s.str ();
 		for (int i = 0; i < 16; i ++)
 		{
 			if (b + i < buffer->b.size ())
 			{
-				s << toH (buffer->b[b + i]);
+				std::cout << toH (buffer->b[b + i]);
 			}
 			else
 			{
-				s << "~~";
+				std::cout << "  ";
 			}
 			if (i < 16 - 1)
-				s << '-';
+				std::cout << '-';
 		}
-		s << '|';
+		std::cout << '|';
 		for (int i = 0; i < 16; i ++)
 		{
 			if (b + i < buffer->b.size ())
 			{
 				if (buffer->b[b + i] > 31 and buffer->b[b + i] < 177)
-					s << buffer->b[b + i];
+					std::cout << buffer->b[b + i];
 				else
-					s << ' ';
+					std::cout << ' ';
 			}
 			else
 			{
-				s << ' ';
+				std::cout << ' ';
 			}
 		}
-		s << '.';
+		std::cout << '.';
 	}
 	else
 	{
-		s << "Buffer is empty!";
+		std::cout << "!";
 	}
-	write (1, s.str ().c_str (), s.str ().size ());
 }
 
 void execute (
@@ -651,7 +565,7 @@ void execute (
 {
 	if (ac == 0 and cmd == 0)
 	{
-		write (1, "?", 1);
+		std::cout << "?";
 		return;
 	}
 	else if (ac = 0 and cmd != 0)
@@ -666,7 +580,7 @@ void execute (
 					restore ();
 				else
 				{
-					write (1, "?", 1);
+					std::cout << "?";
 					return;
 				}
 			}
