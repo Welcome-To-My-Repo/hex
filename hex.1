@@ -98,7 +98,7 @@ commands by a `|' character.
 Adressing in
 .I hex
 is performed using a byte offset from the first byte of the file represented
-wity a hexadecimal number between 0 and ffffffff.
+wity a hexadecimal number between 0x0 and 0xffffffff.
 .PP
 Any alphabetical characters used in addressing are only recognized when
 lower-case. This is not out of a sense of individuality, but rather an attempt
@@ -109,8 +109,8 @@ The current offset.
 The \fIn\fRth address in the editor's buffer. Addresses are numbered
 sequentially in hexadecimal notation.
 .I Hex
-supports address sizes of up to eight digits, from 0 for the first offset
-to ffffffff for the last offset. This provides valid addressing for files
+supports address sizes of up to eight digits, from 0x0 for the first offset
+to 0xffffffff for the last offset. This provides valid addressing for files
 up to four gigabytes in size with a single byte word size. Addresses are entered
 without padding, meaning that "1a" is an acceptable entry, but "0000001a" is
 not.

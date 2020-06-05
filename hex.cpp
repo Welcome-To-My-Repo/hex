@@ -64,7 +64,7 @@ std::vector<file_buffer> files;
 
 //function to restore terminal and terminate hex
 void restore ();
-//function to get input
+//function to add bytes to buffer
 std::string getText ();
 //function to convert hexadecimal string to character value
 char toC (char *h);
@@ -80,6 +80,8 @@ int htoa (char *h);
 int rfind (std::string r);
 //regex replace
 void rrplace (std::string r);
+//returns a string of input
+std::string gin ();
 
 //data for undo command
 std::string ub; //holds buffer of last bytes added or removed
@@ -172,32 +174,7 @@ int main (int argc, char **argv)
 	std::stringstream out;
 	while (1)
 	{
-		while (read (0, &key, 1) != -1)
-		{
-			if (key == 0)
-			{
-				continue;
-			}
-			else if (key == 8 or key == 127)
-			{
-				if (in.size () > 0)
-					in.pop_back ();
-				t << "\r\x1b[2K" << in;
-				write (1, t.str().c_str (), t.str().size ());
-			}
-			else if (key == 10 or key == 13 or key == '|')
-			{
-				in.push_back (key);
-				break;
-			}
-			else
-			{
-				in.push_back (key);
-				write (1, &key, 1);
-			}
-			key == 0;
-		}
-		t.str (in);
+		t.str (gin ());
 
 		while (t.get(key))
 		{
@@ -221,16 +198,6 @@ int main (int argc, char **argv)
 				{
 					switch (key)
 					{
-						case '.':
-						{
-							if (ac < 2)
-							{
-								o[ac] = buffer->o;
-								ac ++;
-								s = 1;
-							}
-							break;
-						}
 						case 'q':
 						{
 							cmd = key;
@@ -249,9 +216,9 @@ int main (int argc, char **argv)
 				{
 					switch (key)
 					{
-						case 'i':
+						case '!':
 						{
-							opt = i;
+							opt = key;
 
 						}
 					}
@@ -355,6 +322,38 @@ int htoa (char *)
 //16^1 = 16
 //16^0 = 1
 return 0;
+}
+
+std::string gin ()
+{
+	std::string in;
+	char key = 0;
+	while (read (0, &key, 1) != -1)
+	{
+		if (key == 0)
+		{
+			continue;
+		}
+		else if (key == 8 or key == 127)
+		{
+			if (in.size () > 0)
+				in.pop_back ();
+			write (1, "\r\x1b[2K", 5);
+			write (1, in.c_str (), in.size ());
+		}
+		else if (key == 10 or key == 13 or key == '|')
+		{
+			in.push_back (key);
+			break;
+		}
+		else
+		{
+			in.push_back (key);
+			write (1, &key, 1);
+		}
+		key == 0;
+	}
+	return in;
 }
 
 std::string getText ()
