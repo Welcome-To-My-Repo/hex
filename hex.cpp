@@ -162,7 +162,8 @@ int main (int argc, char **argv)
 	* 8: aggregate keyword command
 	* 9: aggregate pathname
 	*/
-	int *o = new int[3], //three possible offsets in a command
+	bool init = true;
+	int *o = new int[3] {0,0,0}, //three possible offsets in a command
 		ac = 0, //number of offsets in the command
 		rc = 0, //number of regular expressions
 		s = 0, //state identifier
@@ -177,8 +178,7 @@ int main (int argc, char **argv)
 		*mk = new char[4]; //used for marked addresses
 	std::string *rx = new std::string[2], //holds regular expressions
 		path, //holds pathname
-		*prx = new std::string[2], //holds previous regular expressions
-		in; //holds input
+		*prx = new std::string[2]; //holds previous regular expressions
 	bool addr = false, succ = false, r = true;
 	std::stringstream out;
 	while (1)
@@ -191,6 +191,7 @@ int main (int argc, char **argv)
 			{
 				case -1:
 				{
+					confirm = -1;
 					switch (key)
 					{
 						case '\n':
@@ -204,6 +205,7 @@ int main (int argc, char **argv)
 				}
 				case 0: //init
 				{
+					init = false;
 					switch (key)
 					{
 						case 'q':
@@ -212,16 +214,113 @@ int main (int argc, char **argv)
 							confirm += 3;
 							s = 5;
 						}
+						case '[':
+						{
+							s = 1;
+							count = 0;
+							break;
+						}
 						case '\n':
 						case '\r':
 						case '|':
 						{
-								break;
+							break;
 						}
 						default:
 						{
 							write (1, "?", 1);
 							s = -1;
+						}
+					}
+					break;
+				}
+				case 1:
+				{
+					switch (key)
+					{
+						case '0':
+						case '1':
+						case '2':
+						case '3':
+						case '4':
+						case '5':
+						case '6':
+						case '7':
+						case '8':
+						case '9':
+						case 'a':
+						case 'b':
+						case 'c':
+						case 'd':
+						case 'e':
+						case 'f':
+						{
+							if (ac < 2)
+							{
+								if (count < 8)
+								{
+									a[count] = key;
+									count ++;
+								}
+								else
+								{
+									write (1, "?", 1);
+									s = -1;
+								}
+							}
+							else if (ac > 1 and confirm > 2)
+							{
+								a[count] = key;
+								count ++;
+							}
+							else
+							{
+								write (1, "?", 1);
+								s = -1;
+							}
+							break;
+						}
+						case ']':
+						{
+							if (count == 0)
+							{
+								write (1, "?", 1);
+								s = -1;
+								break;
+							}
+							int tmp = 7;
+							for (int i = count - 1; i > -1; i --)
+							{
+								if (a[i] > 57)
+								{
+									o[ac] += (a[i] - 87) * values[tmp];
+								}
+								else
+								{
+									o[ac] += (a[i] - 48) * values[tmp];
+								}
+								tmp --;
+							}
+							if (o[ac] < buffer->b.size ())
+							{
+								ac ++;
+								confirm += 1;
+								s = 0;
+							}
+							else
+							{
+								s = -1;
+								write (1, "!", 1);
+							}
+							break;
+						}
+						case '\n':
+						case '\r':
+						case '|':
+						{
+							write (1, "?", 1);
+							s = -1;
+							break;
 						}
 					}
 					break;
@@ -257,7 +356,6 @@ int main (int argc, char **argv)
 		}
 		t.str ("");
 		t.clear ();
-		in.clear ();
 		write (1, "\r\x1b[2K", 5);
 		switch (confirm)
 		{
@@ -294,21 +392,26 @@ int main (int argc, char **argv)
 			case 5: break;
 		}
 		write (1, "\n", 1);
-		o[0] = 0;
-		o[1] = 0;
-		o[2] = 0;
+		delete[] o;
+		o = new int [3];
 		ac = 0;
-		a[0] = 0;
-		a[1] = 0;
-		a[2] = 0;
-		a[3] = 0;
-		a[4] = 0;
-		a[5] = 0;
-		a[6] = 0;
-		a[7] = 0;
+		rc = 0;
+		s = 0;
 		count = 0;
 		confirm = 0;
 		cmd = 0;
+		opt = 0;
+		delete[] a;
+		a = new char[8];
+		delete[] name;
+		name = new char[4];
+		key = 0;
+		delete[] keyword;
+		keyword = new char[4];
+		delete[] rx;
+		rx = new std::string[2];
+		path.clear ();
+		init = true;
 
 	}
 	return 0;
@@ -530,9 +633,13 @@ void printo ()
 		{
 			if (buffer->o + i < buffer->b.size ())
 			{
+				if (i == 0)
+					s << "\x1b[44m";
 				s << toH (buffer->b[buffer->o + i]);
 				if (i < 16 - 1)
 					s << '-';
+				if (i == 0)
+					s << "\x1b[0m";
 			}
 			else
 			{
@@ -586,9 +693,13 @@ void printo (int b)
 		{
 			if (b + i < buffer->b.size ())
 			{
+				if (i == 0)
+					s << "\x1b[44m";
 				s << toH (buffer->b[b + i]);
 				if (i < 16 - 1)
 					s << '-';
+					if (i == 0)
+						s << "\x1b[0m";
 			}
 			else
 			{
