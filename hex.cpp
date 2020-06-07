@@ -13,14 +13,7 @@
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 
-#define unsaved "Buffer has unsaved changes!"
-#define empty "Buffer is empty!"
-#define eof "Offset is at the End of File!"
-#define nowinsize "Couldn't get window size!"
-#define small "Window is too small!"
-#define rerr "Read error!"
-#define terr "Couldn't set terminal attributes!"
-#define cerr "Bad command formatting!"
+#include "configuration.h"
 
 struct clip;
 struct mark;
@@ -176,6 +169,10 @@ int main (int argc, char **argv)
 		*prx = new std::string[2]; //holds previous regular expressions
 	bool addr = false, succ = false, r = true;
 	std::stringstream out;
+	sts.str ("");
+	sts.clear ();
+	sts << DEFAULT;
+	write (1, sts.str ().c_str (), sts.str ().size ());
 	while (1)
 	{
 		t.str (gin ());
@@ -244,8 +241,23 @@ int main (int argc, char **argv)
 							else
 							{
 								s = -1;
-								write (1, "?", 1);
 							}
+							break;
+						}
+						case '$':
+						{
+							s = 1;
+							if (ac < 4)
+							{
+								o[ac] = buffer->b.size () - 1;
+								confirm += 1;
+								ac ++;
+							}
+							else
+							{
+								s = -1;
+							}
+							break;
 						}
 						case '\n':
 						case '\r':
@@ -255,8 +267,8 @@ int main (int argc, char **argv)
 						}
 						default:
 						{
-							write (1, "?", 1);
 							s = -1;
+							break;
 						}
 					}
 					break;
@@ -409,9 +421,16 @@ int main (int argc, char **argv)
 			}
 			case 0:
 			{
-				printo();
-				if (buffer->o + 16 < buffer->b.size () + 1)
-					buffer->o += 16;
+				if (buffer->o < buffer->b.size () + 1)
+				{
+					printo();
+					buffer->o += WORD_SIZE;
+				}
+				else
+				{
+					write (1, "!", 1);
+				}
+
 				break;
 			}
 			case 1:
@@ -424,6 +443,7 @@ int main (int argc, char **argv)
 			{
 				buffer->o = o[1];
 				printo (o[0], o[1]);
+				break;
 			}
 			case 3:
 			{
@@ -448,13 +468,13 @@ int main (int argc, char **argv)
 						if (buffer->p.size () > 0)
 							sts << buffer->p;
 						else
-							sts << "\x1b[41mNo File\x1b[0m";
+							sts << WARNING << "No File" << DEFAULT;
 						sts << "\n\r";
 						if (buffer->e)
-							sts << "\x1b[101mmodified";
+							sts << WARNING << "modified";
 						else
-							sts << "\x1b[102munmodified";
-						sts << "\x1b[0m\n\r"
+							sts << OKAY << "unmodified";
+						sts << DEFAULT << "\n\r"
 							<< buffer->o
 							<< "/"
 							<< buffer->b.size ()
@@ -486,14 +506,35 @@ int main (int argc, char **argv)
 					}
 					case 'i':
 					{
+						buffer->e = true;
+						if (buffer->b.size () == 0)
+							buffer->b.assign (getText ());
+						else
+							buffer->b.insert (buffer->o, getText ());
 						break;
 					}
 					case 'c':
 					{
+						buffer->e = true;
+						if (buffer->b.size () == 0)
+							buffer->b.assign(getText ());
+						else
+						{
+							tmp = getText ();
+							if (tmp.size () > 0)
+							{
+								buffer->b.at(buffer->o) = tmp.at(0);
+								buffer->b.insert (buffer->o + 1, tmp.substr (1, std::string::npos));
+							}
+						}
 						break;
 					}
 					case 'd':
 					{
+						buffer->e = true;
+						buffer->b.erase (buffer->o, 1);
+						if (!buffer->o < buffer->b.size ())
+							buffer->o = buffer->b.size () - 1;
 						break;
 					}
 					default:
@@ -526,15 +567,57 @@ int main (int argc, char **argv)
 					}
 					case 'i':
 					{
+						buffer->e = true;
+						if (buffer->b.size () == 0)
+							buffer->b.assign (getText ());
+						else if (o[0] == buffer->b.size ())
+							buffer->b.append (getText ());
+						else
+							buffer->b.insert (o[0], getText ());
 						break;
 					}
 					case 'c':
 					{
+						buffer->e = true;
+						if (buffer->b.size () == 0)
+							buffer->b.assign(getText ());
+						else
+						{
+							tmp = getText ();
+							if (tmp.size () > 0)
+							{
+								buffer->b.at(o[0]) = tmp.at(0);
+								buffer->b.insert (o[0] + 1, tmp.substr (1, std::string::npos));
+							}
+						}
+						break;
+					}
+					case 'd':
+					{
+						buffer->e = true;
+						buffer->b.erase (o[0]);
 						break;
 					}
 				}
 			}
-			case 5: break;
+			case 5:
+			{
+				switch (cmd)
+				{
+					case 'c':
+					{
+						buffer->e = true;
+						if (buffer->b.size () == 0)
+							buffer->b.assign(getText ());
+						else
+						{
+							tmp = getText ();
+							if (tmp.size () > 0)
+								buffer->b.replace (o[0], o[1], tmp);
+						}
+					}
+				}
+			}
 		}
 		write (1, "\n", 1);
 		delete[] o;
@@ -600,8 +683,6 @@ char * toH (unsigned char c)
 	return x;
 }
 
-int htoa (char *)
-{
 //16^7 = 268435456
 //16^6 = 16777216
 //16^5 = 1048576
@@ -610,10 +691,6 @@ int htoa (char *)
 //16^2 = 256
 //16^1 = 16
 //16^0 = 1
-
-
-return 0;
-}
 
 std::string gin ()
 {
@@ -663,13 +740,13 @@ std::string getText ()
 		sts.str ("");
 		sts
 			<< std::hex
-			<< "\x1b[33m"
+			<< OFFSET
 			<< std::setw (8)
 			<< std::right
 			<< std::setfill ('0')
 			<< word_counter
 			<< '|'
-			<< "\x1b[0m";
+			<< DEFAULT;
 		write (1, sts.str ().c_str (), sts.str ().size ());
 		sts.clear ();
 		while (1)
@@ -772,51 +849,62 @@ void printo ()
 {
 	std::stringstream s;
 	s.str ("");
-	if (buffer->b.size () > 0 or buffer->o < buffer->b.size ())
+	int start, byte;
+	if (buffer->b.size () > 0 and buffer->o < buffer->b.size ())
 	{
+		start = (buffer->o / WORD_SIZE) * WORD_SIZE;
+		byte = buffer->o % WORD_SIZE;
 		s
+			<< OFFSET
 			<< std::hex
-			<< "\x1b[33m"
 			<< std::setw (8)
 			<< std::right
 			<< std::setfill ('0')
 			<< buffer->o
-			<< "\x1b[0m"
+			<< DEFAULT
 			<< '|';
-		for (int i = 0; i < 16; i ++)
+		for (int i = 0; i < WORD_SIZE; i ++)
 		{
-			if (buffer->o + i < buffer->b.size ())
+			if (start + i < buffer->b.size ())
 			{
-				if (i == 0)
-					s << "\x1b[44m";
-				s << toH (buffer->b[buffer->o + i]);
-				if (i < 16 - 1)
+				if (i == byte)
+					s << BYTE;
+				s << toH (buffer->b[start + i]);
+				if (i < WORD_SIZE - 1)
 					s << '-';
-				if (i == 0)
-					s << "\x1b[0m";
+				if (i == byte)
+					s << DEFAULT;
 			}
 			else
 			{
-				s << "\x1b[31mEOF";
-				for (int j = 0; j < 16 - i - 2; j++)
+				s << EOF_MARK << "EOF";
+				for (int j = 0; j < WORD_SIZE - i - 2; j++)
 					s << "   ";
-				s << "  \x1b[0m";
+				s << "  " << DEFAULT;
 				break;
 			}
 		}
 		s << '|';
-		for (int i = 0; i < 16; i ++)
+		for (int i = 0; i < WORD_SIZE; i ++)
 		{
-			if (buffer->o + i < buffer->b.size ())
+			if (start + i < buffer->b.size ())
 			{
-				if (buffer->b[buffer->o + i] > 31 and buffer->b[buffer->o + i] < 177)
-					s << buffer->b[buffer->o + i];
+				if (i == byte)
+					s << BYTE;
+				if (buffer->b[start + i] > 31 and buffer->b[start + i] < 127)
+				{
+					s << buffer->b[start + i];
+				}
 				else
-					s << ' ';
+				{
+					s << INVISIBLE << '?' << DEFAULT;
+				}
+				if (i == byte)
+					s << DEFAULT;
 			}
 			else
 			{
-				s << "\x1b[41m \x1b[0m";
+				s << EOF_MARK << "~" << DEFAULT;
 			}
 		}
 		s << '|';
@@ -832,51 +920,62 @@ void printo (int b)
 {
 	std::stringstream s;
 	s.str ("");
-	if (buffer->b.size () > 0 or b < buffer->b.size ())
+	int start, byte;
+	if (buffer->b.size () > 0 and b < buffer->b.size ())
 	{
+		start = (b / WORD_SIZE) * WORD_SIZE;
+		byte = b % WORD_SIZE;
 		s
+			<< OFFSET
 			<< std::hex
-			<< "\x1b[33m"
 			<< std::setw (8)
 			<< std::right
 			<< std::setfill ('0')
-			<< b
-			<< "\x1b[0m"
+			<< buffer->o
+			<< DEFAULT
 			<< '|';
-		for (int i = 0; i < 16; i ++)
+		for (int i = 0; i < WORD_SIZE; i ++)
 		{
-			if (b + i < buffer->b.size ())
+			if (start + i < buffer->b.size ())
 			{
-				if (i == 0)
-					s << "\x1b[44m";
-				s << toH (buffer->b[b + i]);
-				if (i < 16 - 1)
+				if (i == byte)
+					s << BYTE;
+				s << toH (buffer->b[start + i]);
+				if (i < WORD_SIZE - 1)
 					s << '-';
-					if (i == 0)
-						s << "\x1b[0m";
+				if (i == byte)
+					s << DEFAULT;
 			}
 			else
 			{
-				s << "\x1b[31mEOF";
-				for (int j = 0; j < 16 - i - 2; j++)
+				s << EOF_MARK << "EOF";
+				for (int j = 0; j < WORD_SIZE - i - 2; j++)
 					s << "   ";
-				s << "  \x1b[0m";
+				s << "  " << DEFAULT;
 				break;
 			}
 		}
 		s << '|';
-		for (int i = 0; i < 16; i ++)
+		for (int i = 0; i < WORD_SIZE; i ++)
 		{
-			if (b + i < buffer->b.size ())
+			if (start + i < buffer->b.size ())
 			{
-				if (buffer->b[b + i] > 31 and buffer->b[b + i] < 177)
-					s << buffer->b[b + i];
+				if (i == byte)
+					s << BYTE;
+				if (buffer->b[start + i] > 31 and buffer->b[start + i] < 127)
+				{
+					s << buffer->b[start + i];
+				}
 				else
-					s << ' ';
+				{
+					s << INVISIBLE << '?' << DEFAULT;
+				}
+				if (i == byte)
+					s << DEFAULT;
 			}
 			else
 			{
-				s << "\x1b[41m \x1b[0m";
+				s << EOF_MARK << "~" << DEFAULT;
 			}
 		}
 		s << '|';
@@ -893,56 +992,67 @@ void printo (int a, int b)
 	std::stringstream s;
 	s.str ("");
 	int word;
+	int start, byte;
 	if (buffer->b.size () > 0 and a < b and a < buffer->b.size () and b < buffer->b.size ())
 	{
 		for (int pos = a; pos < b + 1; pos += 16)
 		{
+			start = (pos / 16) * 16;
+			byte = pos % 16;
 			s
+				<< OFFSET
 				<< std::hex
-				<< "\x1b[33m"
-				<< std::setw(8)
+				<< std::setw (8)
 				<< std::right
 				<< std::setfill ('0')
-				<< pos
-				<< "\x1b[0m"
+				<< buffer->o
+				<< DEFAULT
 				<< '|';
 			for (int i = 0; i < 16; i ++)
 			{
-				if (pos + i < b + 1)
+				if (start + i < buffer->b.size ())
 				{
-					if (i == 0)
-						s << "\x1b[44m";
-					s << toH (buffer->b[pos + i]);
+					if (i == byte)
+						s << BYTE;
+					s << toH (buffer->b[start + i]);
 					if (i < 16 - 1)
 						s << '-';
-					if (i == 0)
-						s << "\x1b[0m";
+					if (i == byte)
+						s << DEFAULT;
 				}
 				else
 				{
-					s << "\x1b[31mEOF";
-					for (int j = 0; j < 16 - i - 2; j ++)
+					s << EOF_MARK << "EOF";
+					for (int j = 0; j < 16 - i - 2; j++)
 						s << "   ";
-					s << "  \x1b[0m";
+					s << "  " << DEFAULT;
 					break;
 				}
 			}
 			s << '|';
 			for (int i = 0; i < 16; i ++)
 			{
-				if (pos + i < b + 1)
+				if (start + i < buffer->b.size ())
 				{
-					if (buffer->b[pos + i] > 31 and buffer->b[pos + i] < 177)
-						s << buffer->b[pos + i];
+					if (i == byte)
+						s << BYTE;
+					if (buffer->b[start + i] > 31 and buffer->b[start + i] < 127)
+					{
+						s << buffer->b[start + i];
+					}
 					else
-						s << ' ';
+					{
+						s << INVISIBLE << '?' << DEFAULT;
+					}
+					if (i == byte)
+						s << DEFAULT;
 				}
 				else
 				{
-					s << "\x1b[41m \x1b[0m";
+					s << EOF_MARK << "~" << DEFAULT;
 				}
 			}
-			s << "|";
+			s << '|';
 			if (pos < b)
 				s << "\r\n";
 		}
