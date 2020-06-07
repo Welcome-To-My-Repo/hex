@@ -212,6 +212,12 @@ int main (int argc, char **argv)
 							confirm += 3;
 							s = 5;
 						}
+						case '\n':
+						case '\r':
+						case '|':
+						{
+								break;
+						}
 						default:
 						{
 							write (1, "?", 1);
@@ -392,7 +398,7 @@ std::string gin ()
 			in.push_back (key);
 			write (1, &key, 1);
 		}
-		key == 0;
+		key = 0;
 	}
 	return in;
 }
