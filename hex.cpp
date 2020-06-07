@@ -490,17 +490,18 @@ int main (int argc, char **argv)
 					case 'a':
 					{
 						buffer->e = true;
+						tmp = getText ();
 						if (buffer->b.size () == 0)
 						{
-							buffer->b.assign(getText ());
+							buffer->b.assign(tmp);
 						}
 						else if (buffer->o + 1 == buffer->b.size ())
 						{
-							buffer->b.append (getText ());
+							buffer->b.append (tmp);
 						}
 						else
 						{
-							buffer->b.insert (buffer->o + 1, getText ());
+							buffer->b.insert (buffer->o + 1, tmp);
 						}
 						break;
 					}
@@ -594,8 +595,15 @@ int main (int argc, char **argv)
 					}
 					case 'd':
 					{
-						buffer->e = true;
-						buffer->b.erase (o[0]);
+						if (buffer->b.size () > 0)
+						{
+							buffer->e = true;
+							buffer->b.erase (o[0], 1);
+						}
+						else
+						{
+							write (1, "!", 1);
+						}
 						break;
 					}
 				}
@@ -615,6 +623,23 @@ int main (int argc, char **argv)
 							if (tmp.size () > 0)
 								buffer->b.replace (o[0], o[1], tmp);
 						}
+						break;
+					}
+					case 'd':
+					{
+						if (buffer->b.size () > 0)
+						{
+							buffer->e = true;
+							if (o[0] < o[1])
+								buffer->b.erase (o[0], o[1] - o[0]);
+							else
+								write (1, "?", 1);
+						}
+						else
+						{
+							write (1, "!", 1);
+						}
+						break;
 					}
 				}
 			}
