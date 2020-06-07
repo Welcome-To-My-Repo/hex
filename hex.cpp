@@ -88,6 +88,28 @@ std::string ub; //holds buffer of last bytes added or removed
 int uo, ul; //holds the (o)ffset the last command acted on and the (l)ength of bytes
 bool ua; //true if the last operation added bytes, false if bytes were removed
 
+
+//variables for the state machine thingy that parses commands
+int o[3], ac = 0, rc = 0, s = 0, count = 0;
+int confirm = 0;
+/* marks the type of command parsed
+* each address is +1
+* command is +3
+*/
+char 	cmd = 0,
+	opt = 0,
+	a[8] = {0,0,0,0,0,0,0,0},
+	name[4] = {0,0,0,0},
+	key = 0,
+	keyword[4] = {0,0,0,0},
+	mk[4] = {0,0,0,0};
+std::string rx[2], path, prx[2], in;
+int values [8] = {268435456,16777216,1048576,65536,4096,256,16,1};
+
+void layer1 (char k);
+void layer2 ();
+void execute ();
+
 int main (int argc, char **argv)
 {
 	int current_buffer = 0, pos;
@@ -154,23 +176,7 @@ int main (int argc, char **argv)
 	* 8: aggregate keyword command
 	* 9: aggregate pathname
 	*/
-	//void execute (int *o, int ac, char cmd, char *name, char *keyword, std::string *rx, std::string path, std::string *prx)
-	int o[3], ac = 0, rc = 0, s = 0, count = 0;
 	bool addr = false, succ = false, r = true;
-	int confirm = 0;
-	/* confirm signifies which components exist in the command
-	* first address +1
-	* second address +1
-	* command +3
-	*/
-	char 	cmd = 0,
-		opt = 0,
-		a[8] = {0,0,0,0,0,0,0,0},
-		name[4] = {0,0,0,0},
-		key = 0,
-		keyword[4] = {0,0,0,0},
-		mk[4] = {0,0,0,0};
-	std::string rx[2], path, prx[2], in;
 	std::stringstream out;
 	while (1)
 	{
@@ -194,10 +200,36 @@ int main (int argc, char **argv)
 					}
 					break;
 				}
-				case 0: //aggregate an address
+				case 0: //init
 				{
 					switch (key)
 					{
+						case '[':
+						{
+							s = 1;
+							break;
+						}
+						case 'a': break;
+						case 'c': break;
+						case 'i': break;
+						{
+							cmd = key;
+							confirm += 3;
+							break;
+						}
+						case 'd': break;
+						case 'y': break;
+						case 'v': break;
+						case 'z': break;
+						case 'm': break;
+						case 'p': break;
+						case 'x': break;
+						case 'u': break;
+						case 'r': break;
+						case 'o': break;
+						case 's': break;
+						case 'n': break;
+						case 'w': break;
 						case 'q':
 						{
 							cmd = key;
@@ -205,11 +237,92 @@ int main (int argc, char **argv)
 							confirm += 3;
 							break;
 						}
+						case 'f': break;
+						case '*': break;
 					}
 					break;
 				}
-				case 1: //aggregate a command
+				case 1: //aggregate an address
 				{
+					switch (key)
+					{
+						case '0':
+						case '1':
+						case '2':
+						case '3':
+						case '4':
+						case '5':
+						case '6':
+						case '7':
+						case '8':
+						case '9':
+						case 'a':
+						case 'b':
+						case 'c':
+						case 'd':
+						case 'e':
+						case 'f':
+						{
+							if (count < 8)
+							{
+								a[count] = key;
+								count ++;
+							}
+							else
+							{
+								write (1, "?", 1);
+								s = -1;
+							}
+							break;
+						}
+						case ']':
+						{
+							if (count == 0)
+							{
+								write (1, "?", 1);
+								s = -1;
+								break;
+							}
+							int tmp = 7;
+							for (int i = count - 1; i > -1; i --)
+							{
+								if (a[i] > 57)
+								{
+									o[ac] += (a[i] - 87) * values[tmp];
+								}
+								else
+								{
+									o[ac] += (a[i] - 48) * values[tmp];
+								}
+								tmp --;
+							}
+							confirm += 1;
+							if (ac < 2)
+							{
+								s = 0;
+							}
+							else
+							{
+								s = 2;
+							}
+							break;
+						}
+						default:
+						{
+							write (1, "?", 1);
+							s = -1;
+							break;
+						}
+					}
+					break;
+				}
+				case 2: //aggregate a command
+				{
+					if (confirm >= 3)
+					{
+						s = -1;
+
+					}
 					break;
 				}
 				case 5: //aggregate an option
@@ -227,7 +340,9 @@ int main (int argc, char **argv)
 			}
 		}
 		t.str ("");
+		t.clear ();
 		in.clear ();
+		write (1, "\r\x1b[2K", 5);
 		switch (confirm)
 		{
 			case 0:
@@ -239,6 +354,7 @@ int main (int argc, char **argv)
 			}
 			case 1:
 			{
+				buffer->o = o[0];
 				printo (o[0]);
 				break;
 			}
@@ -261,10 +377,19 @@ int main (int argc, char **argv)
 			case 4: break;
 			case 5: break;
 		}
+		write (1, "\n", 1);
 		o[0] = 0;
 		o[1] = 0;
 		o[2] = 0;
 		ac = 0;
+		a[0] = 0;
+		a[1] = 0;
+		a[2] = 0;
+		a[3] = 0;
+		a[4] = 0;
+		a[5] = 0;
+		a[6] = 0;
+		a[7] = 0;
 		count = 0;
 		confirm = 0;
 		cmd = 0;
@@ -321,6 +446,8 @@ int htoa (char *)
 //16^2 = 256
 //16^1 = 16
 //16^0 = 1
+
+
 return 0;
 }
 
@@ -354,6 +481,73 @@ std::string gin ()
 		key == 0;
 	}
 	return in;
+}
+
+void layer1 (char k)
+{
+	switch (s)
+	{
+		case -1:
+		case 0:
+		{
+			break;
+		}
+	}
+}
+
+void layer2 (char k)
+{
+	switch (k)
+	{
+		case 'a':
+		case 'c':
+		case 'i':
+		case 'd':
+		case 'y':
+		case 'v':
+		case 'z':
+		case 'm':
+		case 'p':
+		case 'x':
+		case 'u':
+		case 'r':
+		case 'o':
+		case 's':
+		case 'n':
+		case 'w':
+		case 'q':
+		case 'f':
+		case '*':
+		case '0':
+		case '1':
+		case '2':
+		case '3':
+		case '4':
+		case '5':
+		case '6':
+		case '7':
+		case '8':
+		case '9':
+		case 'A':
+		case 'B':
+		case 'C':
+		case 'D':
+		case 'E':
+		case 'F':
+		case '\'':
+		case '$':
+		case '/':
+		case '?':
+		case '+':
+		case '-':
+		{
+			break;
+		}
+		default:
+		{
+
+		}
+	}
 }
 
 std::string getText ()
@@ -468,7 +662,7 @@ void printo ()
 {
 	std::stringstream s;
 	s.str ("");
-	if (buffer->b.size () > 0 or buffer->o > buffer->b.size ())
+	if (buffer->b.size () > 0 or buffer->o < buffer->b.size ())
 	{
 		s
 			<< std::hex
@@ -514,26 +708,22 @@ void printo ()
 	{
 		s << "!";
 	}
-	s << "\r\n";
 	write (1, s.str ().c_str (), s.str ().size ());
 }
 
 void printo (int b)
 {
 	std::stringstream s;
-	char h[2];
 	s.str ("");
-	if (buffer->b.size () > 0)
+	if (buffer->b.size () > 0 or b < buffer->b.size ())
 	{
 		s
-			//<< "0x"
 			<< std::hex
 			<< std::setw (8)
 			<< std::right
 			<< std::setfill ('0')
 			<< b
 			<< '|';
-		write (1, s.str ().c_str (), s.str ().size ());
 		for (int i = 0; i < 16; i ++)
 		{
 			if (b + i < buffer->b.size ())
@@ -542,7 +732,10 @@ void printo (int b)
 			}
 			else
 			{
-				s << "  ";
+				s << "EOF";
+				for (int j = 0; j < 16 - i; j++)
+					s << "   ";
+				break;
 			}
 			if (i < 16 - 1)
 				s << '-';
@@ -559,7 +752,7 @@ void printo (int b)
 			}
 			else
 			{
-				s << ' ';
+				s << '-';
 			}
 		}
 		s << '.';
