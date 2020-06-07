@@ -69,11 +69,12 @@ std::string getText ();
 //function to convert hexadecimal string to character value
 char toC (char *h);
 //function to convert character to hexadecimal string
-char *toH (char c);
+char *toH (unsigned char c);
 //function to print an offset
 void printo ();
 //overload of printo for printing a buffer that's not the current buffer
 void printo (int b);
+void printo (int a, int b);
 //convert hex address to decimal
 int htoa (char *h);
 //refegex find
@@ -88,13 +89,7 @@ std::string ub; //holds buffer of last bytes added or removed
 int uo, ul; //holds the (o)ffset the last command acted on and the (l)ength of bytes
 bool ua; //true if the last operation added bytes, false if bytes were removed
 
-
-
 int values [8] = {268435456,16777216,1048576,65536,4096,256,16,1};
-
-void layer1 (char k);
-void layer2 ();
-void execute ();
 
 int main (int argc, char **argv)
 {
@@ -213,12 +208,44 @@ int main (int argc, char **argv)
 							cmd = key;
 							confirm += 3;
 							s = 5;
+							break;
+						}
+						case 'f':
+						{
+							cmd = key;
+							confirm += 3;
+							s = 9;
+							break;
+						}
+						case 'a':
+						case 'i':
+						case 'c':
+						case 'd':
+						{
+							cmd = key;
+							confirm += 3;
+							break;
 						}
 						case '[':
 						{
 							s = 1;
 							count = 0;
 							break;
+						}
+						case '.':
+						{
+							s = 1;
+							if (ac < 4)
+							{
+								o[ac] = buffer->o;
+								confirm += 1;
+								ac ++;
+							}
+							else
+							{
+								s = -1;
+								write (1, "?", 1);
+							}
 						}
 						case '\n':
 						case '\r':
@@ -264,7 +291,6 @@ int main (int argc, char **argv)
 								}
 								else
 								{
-									write (1, "?", 1);
 									s = -1;
 								}
 							}
@@ -275,7 +301,6 @@ int main (int argc, char **argv)
 							}
 							else
 							{
-								write (1, "?", 1);
 								s = -1;
 							}
 							break;
@@ -284,7 +309,6 @@ int main (int argc, char **argv)
 						{
 							if (count == 0)
 							{
-								write (1, "?", 1);
 								s = -1;
 								break;
 							}
@@ -310,15 +334,18 @@ int main (int argc, char **argv)
 							else
 							{
 								s = -1;
-								write (1, "!", 1);
 							}
+							break;
+						}
+						case '[':
+						{
+							s = -1;
 							break;
 						}
 						case '\n':
 						case '\r':
 						case '|':
 						{
-							write (1, "?", 1);
 							s = -1;
 							break;
 						}
@@ -340,13 +367,29 @@ int main (int argc, char **argv)
 						case '\r':
 						case '|':
 						{
-							opt = 0;
 							break;
 						}
 						default:
 						{
-							write (1, "?", 1);
 							s = -1;
+							break;
+						}
+					}
+					break;
+				}
+				case 9:
+				{
+					switch (key)
+					{
+						case '\r':
+						case '\n':
+						case '|':
+						{
+							break;
+						}
+						default:
+						{
+							path.push_back (key);
 							break;
 						}
 					}
@@ -359,6 +402,11 @@ int main (int argc, char **argv)
 		write (1, "\r\x1b[2K", 5);
 		switch (confirm)
 		{
+			case -1:
+			{
+				write (1, "?", 1);
+				break;
+			}
 			case 0:
 			{
 				printo();
@@ -372,7 +420,11 @@ int main (int argc, char **argv)
 				printo (o[0]);
 				break;
 			}
-			case 2: break;
+			case 2:
+			{
+				buffer->o = o[1];
+				printo (o[0], o[1]);
+			}
 			case 3:
 			{
 				switch (cmd)
@@ -385,10 +437,103 @@ int main (int argc, char **argv)
 							restore ();
 						else
 							write (1, "!", 1);
+						break;
+					}
+					case 'f':
+					{
+						if (path.size () > 0)
+							buffer->p = path;
+						sts.str ("");
+						sts.clear ();
+						if (buffer->p.size () > 0)
+							sts << buffer->p;
+						else
+							sts << "\x1b[41mNo File\x1b[0m";
+						sts << "\n\r";
+						if (buffer->e)
+							sts << "\x1b[101mmodified";
+						else
+							sts << "\x1b[102munmodified";
+						sts << "\x1b[0m\n\r"
+							<< buffer->o
+							<< "/"
+							<< buffer->b.size ()
+							<< "(%";
+						if (buffer->b.size () > 0)
+							sts << (int)(buffer->o * 100) / buffer->b.size ();
+						else
+							sts << 0;
+						sts	<< ")";
+						write (1, sts.str ().c_str (), sts.str ().size ());
+						break;
+					}
+					case 'a':
+					{
+						buffer->e = true;
+						if (buffer->b.size () == 0)
+						{
+							buffer->b.assign(getText ());
+						}
+						else if (buffer->o + 1 == buffer->b.size ())
+						{
+							buffer->b.append (getText ());
+						}
+						else
+						{
+							buffer->b.insert (buffer->o + 1, getText ());
+						}
+						break;
+					}
+					case 'i':
+					{
+						break;
+					}
+					case 'c':
+					{
+						break;
+					}
+					case 'd':
+					{
+						break;
+					}
+					default:
+					{
+						write (1, "?", 1);
+					}
+				}
+				break;
+			}
+			case 4:
+			{
+				switch (cmd)
+				{
+					case 'a':
+					{
+						if (buffer->b.size () == 0)
+						{
+							buffer->b.assign(getText ());
+						}
+						else if (o[0] + 1 == buffer->b.size ())
+						{
+							buffer->b.append (getText ());
+						}
+						else
+						{
+							buffer->b.insert (o[0] + 1, getText ());
+						}
+						buffer->o = o[0];
+						break;
+					}
+					case 'i':
+					{
+						break;
+					}
+					case 'c':
+					{
+						break;
 					}
 				}
 			}
-			case 4: break;
 			case 5: break;
 		}
 		write (1, "\n", 1);
@@ -438,7 +583,7 @@ char toC (char *h)
 	return r;
 }
 
-char * toH (char c)
+char * toH (unsigned char c)
 {
 	char *x = new char[3];
 	x[0] = c / 16;
@@ -511,13 +656,14 @@ std::string getText ()
 	std::string buffer;
 	int word_counter, hex_counter = 0;
 	std::stringstream sts;
-	char key = 0, hex[2] = {48, 48}, t[1];
+	char key = 0, hex[2] = {48, 48};
+	unsigned char t[1];
 	while (1)
 	{
 		sts.str ("");
 		sts
-			//<< "0x"
 			<< std::hex
+			<< "\x1b[33m"
 			<< std::setw (8)
 			<< std::right
 			<< std::setfill ('0')
@@ -533,18 +679,22 @@ std::string getText ()
 			{
 				if (read (0, &key, 1) == -1)
 				{
+					write (1, &key, 1);
 					exit (5);
 				}
 				if (key > 47 and key < 58)
 				{
+					write (1, &key, 1);
 					hex[0] = key;
 				}
 				else if (key > 96 and key < 103)
 				{
+					write (1, &key, 1);
 					hex[0] = key;
 				}
 				else if (key > 64 and key < 71)
 				{
+					write (1, &key, 1);
 					key += 32;
 					hex[0] = key;
 				}
@@ -562,20 +712,24 @@ std::string getText ()
 			{
 				if (read (0, &key, 1) == -1)
 				{
+					write (1, &key, 1);
 					exit (5);
 				}
 				if (key > 47 and key < 58)
 				{
-					hex[0] = key;
+					write (1, &key, 1);
+					hex[1] = key;
 				}
 				else if (key > 96 and key < 103)
 				{
-					hex[0] = key;
+					write (1, &key, 1);
+					hex[1] = key;
 				}
 				else if (key > 64 and key < 71)
 				{
+					write (1, &key, 1);
 					key += 32;
-					hex[0] = key;
+					hex[1] = key;
 				}
 				else if (key == '.')
 				{
@@ -726,6 +880,72 @@ void printo (int b)
 			}
 		}
 		s << '|';
+	}
+	else
+	{
+		s << "!";
+	}
+	write (1, s.str ().c_str (), s.str ().size ());
+}
+
+void printo (int a, int b)
+{
+	std::stringstream s;
+	s.str ("");
+	int word;
+	if (buffer->b.size () > 0 and a < b and a < buffer->b.size () and b < buffer->b.size ())
+	{
+		for (int pos = a; pos < b + 1; pos += 16)
+		{
+			s
+				<< std::hex
+				<< "\x1b[33m"
+				<< std::setw(8)
+				<< std::right
+				<< std::setfill ('0')
+				<< pos
+				<< "\x1b[0m"
+				<< '|';
+			for (int i = 0; i < 16; i ++)
+			{
+				if (pos + i < b + 1)
+				{
+					if (i == 0)
+						s << "\x1b[44m";
+					s << toH (buffer->b[pos + i]);
+					if (i < 16 - 1)
+						s << '-';
+					if (i == 0)
+						s << "\x1b[0m";
+				}
+				else
+				{
+					s << "\x1b[31mEOF";
+					for (int j = 0; j < 16 - i - 2; j ++)
+						s << "   ";
+					s << "  \x1b[0m";
+					break;
+				}
+			}
+			s << '|';
+			for (int i = 0; i < 16; i ++)
+			{
+				if (pos + i < b + 1)
+				{
+					if (buffer->b[pos + i] > 31 and buffer->b[pos + i] < 177)
+						s << buffer->b[pos + i];
+					else
+						s << ' ';
+				}
+				else
+				{
+					s << "\x1b[41m \x1b[0m";
+				}
+			}
+			s << "|";
+			if (pos < b)
+				s << "\r\n";
+		}
 	}
 	else
 	{
