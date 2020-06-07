@@ -78,7 +78,8 @@ void rrplace (std::string r);
 std::string gin ();
 
 //data for undo command
-std::string ub; //holds buffer of last bytes added or removed
+std::string ub; //holds buffer of last bytes added
+std::string udb; //holds buffer of last bytes removed
 int uo, ul; //holds the (o)ffset the last command acted on and the (l)ength of bytes
 bool ua; //true if the last operation added bytes, false if bytes were removed
 
@@ -503,31 +504,48 @@ int main (int argc, char **argv)
 						{
 							buffer->b.insert (buffer->o + 1, tmp);
 						}
+						ub = tmp;
+						udb = "";
+						uo = buffer->o;
+						ul = tmp.size ();
+						ua = true;
 						break;
 					}
 					case 'i':
 					{
 						buffer->e = true;
+						tmp = getText ();
 						if (buffer->b.size () == 0)
-							buffer->b.assign (getText ());
+							buffer->b.assign (tmp);
 						else
-							buffer->b.insert (buffer->o, getText ());
+							buffer->b.insert (buffer->o, tmp);
+						ub = tmp;
+						udb = "";
+						uo = buffer->o;
+						ul = tmp.size ();
+						ua = true;
 						break;
 					}
 					case 'c':
 					{
 						buffer->e = true;
+						tmp = getText ();
 						if (buffer->b.size () == 0)
-							buffer->b.assign(getText ());
+							buffer->b.assign(tmp);
 						else
 						{
-							tmp = getText ();
 							if (tmp.size () > 0)
 							{
+								udb.clear ();
+								udb.push_back (buffer->b.at(buffer->o));
 								buffer->b.at(buffer->o) = tmp.at(0);
 								buffer->b.insert (buffer->o + 1, tmp.substr (1, std::string::npos));
 							}
 						}
+						ub = tmp;
+						ul = tmp.size ();
+						uo = buffer->o;
+						ua = true;
 						break;
 					}
 					case 'd':
