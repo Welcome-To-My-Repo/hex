@@ -243,6 +243,8 @@ int main (int argc, char **argv)
 							break;
 						}
 						case 'd':
+						case 'y':
+						case 'v':
 						{
 							cmd = key;
 							confirm += 3;
@@ -545,6 +547,16 @@ int main (int argc, char **argv)
 			}
 			case 3:
 			{
+				if (!(buffer->b.size () > 0))
+				{
+					write (1, "!", 1);
+					break;
+				}
+				if (o[0] < 0 or o[0] >= buffer->b.size ())
+				{
+					write (1, "?", 1);
+					break;
+				}
 				switch (cmd)
 				{
 					case '-':
@@ -692,6 +704,17 @@ int main (int argc, char **argv)
 							write (1, "?", 1);
 						break;
 					}
+					case 'y':
+					{
+						if (name[0] != 0)
+						{
+							clips.push_back (clip {buffer->b.substr (buffer->o, buffer->o + 1), name});
+						}
+						else
+						{
+							vol = buffer->b.substr (buffer->o, buffer->o + 1);
+						}
+					}
 					default:
 					{
 						write (1, "?", 1);
@@ -704,6 +727,16 @@ int main (int argc, char **argv)
 				if (o[0] == -1)
 				{
 					write (1, "?", 1);
+					break;
+				}
+				if (o[0] < 0 or o[0] >= buffer->b.size () or o[1] < 0 or o[1] >= buffer->b.size ())
+				{
+					write (1, "?", 1);
+					break;
+				}
+				if (!(buffer->b.size () > 0))
+				{
+					write (1, "!", 1);
 					break;
 				}
 				switch (cmd)
@@ -801,6 +834,18 @@ int main (int argc, char **argv)
 						}
 						break;
 					}
+					case 'y':
+					{
+						if (name[0] != 0)
+						{
+							clips.push_back (clip {buffer->b.substr (o[0], o[0] + 1), name});
+						}
+						else
+						{
+							vol = buffer->b.substr (o[0], o[0] + 1);
+						}
+						break;
+					}
 				}
 			}
 			case 5:
@@ -837,7 +882,7 @@ int main (int argc, char **argv)
 							buffer->e = true;
 							if (name[0] != 0)
 							{
-								clips.push_back  (clip {buffer->b.substr (o[0], o[1]), name});
+								clips.push_back  (clip {buffer->b.substr (o[0], o[1] + 1), name});
 							}
 							else
 							{
@@ -851,6 +896,23 @@ int main (int argc, char **argv)
 						{
 							write (1, "!", 1);
 						}
+						break;
+					}
+					case 'y':
+					{
+						if (name[0] != 0)
+						{
+							clips.push_back (clip {buffer->b.substr (o[0], o[1] + 1), name});
+						}
+						else
+						{
+							vol = buffer->b.substr (o[0], o[1] + 1);
+						}
+						break;
+					}
+					default:
+					{
+						write (1, "?", 1);
 						break;
 					}
 				}
