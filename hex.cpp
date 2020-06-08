@@ -416,8 +416,9 @@ int main (int argc, char **argv)
 						{
 							if (count < 4)
 							{
-								mk[count] = key;
+								name[count] = key;
 								count ++;
+								s = 5;
 								break;
 							}
 						}
@@ -441,7 +442,7 @@ int main (int argc, char **argv)
 						{
 							if (count < 4)
 							{
-								name[count] = key;
+								mk[count] = key;
 								count ++;
 							}
 							else
