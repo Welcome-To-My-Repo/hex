@@ -4,6 +4,7 @@
 #include <vector>
 #include <iomanip>
 #include <charconv>
+#include <cstring>
 
 #include <termios.h>
 #include <unistd.h>
@@ -27,10 +28,6 @@ struct file_buffer
 	bool e = false;
 	//offset
 	int o = 0;
-	//clipboard for the file
-	std::vector<clip>c;
-	//volatile clipboard for unnamed y and d operations
-	std::string v;
 	//list of marked addresses
 	std::vector <mark>m;
 };
@@ -39,8 +36,10 @@ struct clip
 	//buffer
 	std::string b;
 	//buffer name
-	std::string n;
+	char *n;
 };
+std::vector<clip>clips;
+std::string vol;
 struct mark
 {
 	char n[4];
@@ -157,7 +156,17 @@ int main (int argc, char **argv)
 		rc = 0, //number of regular expressions
 		s = 0, //state identifier
 		count = 0, //general purpose counter
-		confirm = 0; //command resource identifier
+		confirm = 0;
+		/*
+		 * confirm
+		 * first address +1
+		 * second address +1
+		 * pathname +1
+		 * command +3
+		 * name +6
+		 * option +12
+		 * third address +12
+		*/
 	char cmd = 0, //holds command character
 		opt = 0, //holds option character
 		*a = new char [8], //holds hex offset
@@ -180,6 +189,8 @@ int main (int argc, char **argv)
 
 		while (t.get(key))
 		{
+			if (key == ' ' or key == '\t')
+				continue;
 			switch (s)
 			{
 				case -1:
@@ -201,6 +212,14 @@ int main (int argc, char **argv)
 					init = false;
 					switch (key)
 					{
+						case '-':
+						case '+':
+						{
+							cmd = key;
+							confirm += 3;
+							s = 0;
+							break;
+						}
 						case 'q':
 						{
 							cmd = key;
@@ -218,10 +237,17 @@ int main (int argc, char **argv)
 						case 'a':
 						case 'i':
 						case 'c':
+						{
+							cmd = key;
+							confirm += 3;
+							break;
+						}
 						case 'd':
 						{
 							cmd = key;
 							confirm += 3;
+							count = 0;
+							s = 3;
 							break;
 						}
 						case '[':
@@ -258,6 +284,12 @@ int main (int argc, char **argv)
 							{
 								s = -1;
 							}
+							break;
+						}
+						case '\'':
+						{
+							s = 4;
+							count = 0;
 							break;
 						}
 						case '\n':
@@ -326,6 +358,7 @@ int main (int argc, char **argv)
 								break;
 							}
 							int tmp = 7;
+							o[ac] ++;
 							for (int i = count - 1; i > -1; i --)
 							{
 								if (a[i] > 57)
@@ -365,6 +398,70 @@ int main (int argc, char **argv)
 					}
 					break;
 				}
+				case 3:
+				{
+					switch (key)
+					{
+						case '\n':
+						case '\r':
+						case '|':
+						{
+							if (count < 4)
+								s = -1;
+							break;
+						}
+						default:
+						{
+							if (count < 4)
+							{
+								mk[count] = key;
+								count ++;
+								break;
+							}
+						}
+
+					}
+					break;
+				}
+				case 4:
+				{
+					switch (key)
+					{
+						case '\n':
+						case '\r':
+						case '|':
+						{
+							if (count < 4)
+								s = -1;
+							break;
+						}
+						default:
+						{
+							if (count < 4)
+							{
+								name[count] = key;
+								count ++;
+							}
+							else
+							{
+								for (int i = 0; i < buffer->m.size (); i ++)
+								{
+									if (0 == strncmp (
+										name,
+										buffer->m.at(i).n,
+										4
+									))
+									{
+										o[ac] = buffer->m.at(i).o;
+										ac ++;
+										break;
+									}
+								}
+							}
+						}
+					}
+					break;
+				}
 				case 5: //gets option character
 				{
 					switch (key)
@@ -390,7 +487,7 @@ int main (int argc, char **argv)
 					}
 					break;
 				}
-				case 9:
+				case 9: //get pathname
 				{
 					switch (key)
 					{
@@ -424,8 +521,8 @@ int main (int argc, char **argv)
 			{
 				if (buffer->o < buffer->b.size ())
 				{
-					printo();
 					buffer->o ++;
+					printo();
 				}
 				else
 				{
@@ -450,6 +547,32 @@ int main (int argc, char **argv)
 			{
 				switch (cmd)
 				{
+					case '-':
+					{
+						if (buffer->o > 0)
+						{
+							buffer->o --;
+							printo ();
+						}
+						else
+						{
+							write (1, "!", 1);
+						}
+						break;
+					}
+					case '+':
+					{
+						if (buffer->o < buffer->b.size ())
+						{
+							buffer->o ++;
+							printo ();
+						}
+						else
+						{
+							write (1, "!", 1);
+						}
+						break;
+					}
 					case 'q':
 					{
 						if (buffer->e and opt == '!')
@@ -470,12 +593,12 @@ int main (int argc, char **argv)
 							sts << buffer->p;
 						else
 							sts << WARNING << "No File" << DEFAULT;
-						sts << "\n\r";
+						sts << " ";
 						if (buffer->e)
 							sts << WARNING << "modified";
 						else
 							sts << OKAY << "unmodified";
-						sts << DEFAULT << "\n\r"
+						sts << DEFAULT << " " << std::hex
 							<< buffer->o
 							<< "/"
 							<< buffer->b.size ()
@@ -550,10 +673,23 @@ int main (int argc, char **argv)
 					}
 					case 'd':
 					{
-						buffer->e = true;
-						buffer->b.erase (buffer->o, 1);
-						if (!(buffer->o < buffer->b.size ()))
-							buffer->o = buffer->b.size () - 1;
+						if (buffer->b.size () > 0)
+						{
+							buffer->e = true;
+							if (name[0] != 0)
+							{
+								clips.push_back  (clip {buffer->b.substr (buffer->o, buffer->o + 1), name});
+							}
+							else
+							{
+								vol = buffer->b.substr (buffer->o, buffer->o + 1);
+							}
+							buffer->b.erase (buffer->o, 1);
+							if (!(buffer->o < buffer->b.size ()))
+								buffer->o = buffer->b.size () - 1;
+						}
+						else
+							write (1, "?", 1);
 						break;
 					}
 					default:
@@ -565,8 +701,39 @@ int main (int argc, char **argv)
 			}
 			case 4:
 			{
+				if (o[0] == -1)
+				{
+					write (1, "?", 1);
+					break;
+				}
 				switch (cmd)
 				{
+					case '-':
+					{
+						if (buffer->o - o[0] >= 0)
+						{
+							buffer->o -= o[0];
+							printo ();
+						}
+						else
+						{
+							write (1, "!", 1);
+						}
+						break;
+					}
+					case '+':
+					{
+						if (buffer->o + o[0]< buffer->b.size ())
+						{
+							buffer->o += o[0];
+							printo ();
+						}
+						else
+						{
+							write (1, "!", 1);
+						}
+						break;
+					}
 					case 'a':
 					{
 						if (buffer->b.size () == 0)
@@ -616,7 +783,17 @@ int main (int argc, char **argv)
 						if (buffer->b.size () > 0)
 						{
 							buffer->e = true;
+							if (name[0] != 0)
+							{
+								clips.push_back  (clip {buffer->b.substr (o[0], o[0] + 1), name});
+							}
+							else
+							{
+								vol = buffer->b.substr (o[0], o[0] + 1);
+							}
 							buffer->b.erase (o[0], 1);
+							if (!(buffer->o < buffer->b.size ()))
+								buffer->o = buffer->b.size () - 1;
 						}
 						else
 						{
@@ -628,6 +805,16 @@ int main (int argc, char **argv)
 			}
 			case 5:
 			{
+				if (o[0] == -1 or o[1] == -1)
+				{
+					write (1, "?", 1);
+					break;
+				}
+				if (!(o[0] < o[1]))
+				{
+					write (1, "?", 1);
+					break;
+				}
 				switch (cmd)
 				{
 					case 'c':
@@ -648,10 +835,17 @@ int main (int argc, char **argv)
 						if (buffer->b.size () > 0)
 						{
 							buffer->e = true;
-							if (o[0] < o[1])
-								buffer->b.erase (o[0], o[1] - o[0]);
+							if (name[0] != 0)
+							{
+								clips.push_back  (clip {buffer->b.substr (o[0], o[1]), name});
+							}
 							else
-								write (1, "?", 1);
+							{
+								vol = buffer->b.substr (o[0], o[1] + 1);
+							}
+							buffer->b.erase (o[0], o[1]);
+							if (!(buffer->o < buffer->b.size ()))
+								buffer->o = buffer->b.size () - (o[1] - o[0]);
 						}
 						else
 						{
@@ -664,7 +858,7 @@ int main (int argc, char **argv)
 		}
 		write (1, "\n", 1);
 		delete[] o;
-		o = new int [3];
+		o = new int [3] {-1,-1,-1};
 		ac = 0;
 		rc = 0;
 		s = 0;
@@ -673,12 +867,12 @@ int main (int argc, char **argv)
 		cmd = 0;
 		opt = 0;
 		delete[] a;
-		a = new char[8];
+		a = new char[8] {0,0,0,0,0,0,0,0};
 		delete[] name;
-		name = new char[4];
+		name = new char[4] {0,0,0,0};
 		key = 0;
 		delete[] keyword;
-		keyword = new char[4];
+		keyword = new char[4] {0,0,0,0};
 		delete[] rx;
 		rx = new std::string[2];
 		path.clear ();
@@ -788,10 +982,11 @@ std::string getText ()
 			<< std::right
 			<< std::setfill ('0')
 			<< word_counter
-			<< '|'
-			<< DEFAULT;
+			<< DEFAULT
+			<< '|';
 		write (1, sts.str ().c_str (), sts.str ().size ());
 		sts.clear ();
+		sts.str ("");
 		while (1)
 		{
 			key = 0;
@@ -860,10 +1055,12 @@ std::string getText ()
 					key = 0;
 				}
 			}
+			sts.clear ();
+			sts.str ("");
 			t[0] = toC (hex);
 			buffer.push_back (t[0]);
 			hex_counter ++;
-			if (hex_counter < 16)
+			if (hex_counter < WORD_SIZE)
 			{
 				write (1, "-", 1);
 			}
@@ -872,16 +1069,17 @@ std::string getText ()
 				hex_counter = 0;
 				word_counter ++;
 				char p[1];
-				write (1, "|", 1);
-				for (int i = 0; i < 16; i ++)
+				sts << '|';
+				for (int i = 0; i < WORD_SIZE; i ++)
 				{
-					p[0] = buffer.at(buffer.size () - 16 + i);
-					if (p[0] > 31 and p[0] < 177)
-						write (1, p, 1);
+					p[0] = buffer.at(buffer.size () - WORD_SIZE + i);
+					if (p[0] > 31 and p[0] < 127)
+						sts << p[0];
 					else
-						write (1, " ", 1);
+						sts << INVISIBLE << '?' << DEFAULT;
 				}
-				write (1, "\n", 1);
+				sts << "\n";
+				write (1, sts.str ().c_str (), sts.str ().size ());
 				break;
 			}
 		}
@@ -913,10 +1111,10 @@ void printo ()
 				if (i == byte)
 					s << BYTE;
 				s << toH (buffer->b[start + i]);
-				if (i < WORD_SIZE - 1)
-					s << '-';
 				if (i == byte)
 					s << DEFAULT;
+				if (i < WORD_SIZE - 1)
+					s << '-';
 			}
 			else
 			{
@@ -984,10 +1182,10 @@ void printo (int b)
 				if (i == byte)
 					s << BYTE;
 				s << toH (buffer->b[start + i]);
-				if (i < WORD_SIZE - 1)
-					s << '-';
 				if (i == byte)
 					s << DEFAULT;
+				if (i < WORD_SIZE - 1)
+					s << '-';
 			}
 			else
 			{
@@ -1051,29 +1249,29 @@ void printo (int a, int b)
 				<< buffer->o
 				<< DEFAULT
 				<< '|';
-			for (int i = 0; i < 16; i ++)
+			for (int i = 0; i < WORD_SIZE; i ++)
 			{
 				if (start + i < buffer->b.size ())
 				{
 					if (i == byte)
 						s << BYTE;
 					s << toH (buffer->b[start + i]);
-					if (i < 16 - 1)
-						s << '-';
 					if (i == byte)
 						s << DEFAULT;
+					if (i < WORD_SIZE - 1)
+						s << '-';
 				}
 				else
 				{
 					s << EOF_MARK << "EOF";
-					for (int j = 0; j < 16 - i - 2; j++)
+					for (int j = 0; j < WORD_SIZE - i - 2; j++)
 						s << "   ";
 					s << "  " << DEFAULT;
 					break;
 				}
 			}
 			s << '|';
-			for (int i = 0; i < 16; i ++)
+			for (int i = 0; i < WORD_SIZE; i ++)
 			{
 				if (start + i < buffer->b.size ())
 				{
