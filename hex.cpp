@@ -422,10 +422,10 @@ int main (int argc, char **argv)
 			}
 			case 0:
 			{
-				if (buffer->o < buffer->b.size () + 1)
+				if (buffer->o < buffer->b.size ())
 				{
 					printo();
-					buffer->o += WORD_SIZE;
+					buffer->o ++;
 				}
 				else
 				{
@@ -552,7 +552,7 @@ int main (int argc, char **argv)
 					{
 						buffer->e = true;
 						buffer->b.erase (buffer->o, 1);
-						if (!buffer->o < buffer->b.size ())
+						if (!(buffer->o < buffer->b.size ()))
 							buffer->o = buffer->b.size () - 1;
 						break;
 					}
