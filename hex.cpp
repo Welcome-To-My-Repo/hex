@@ -252,6 +252,14 @@ int main (int argc, char **argv)
 							s = 3;
 							break;
 						}
+						case 'm':
+						{
+							cmd = key;
+							confirm += 3;
+							count = 0;
+							s = 1;
+							break;
+						}
 						case '[':
 						{
 							s = 1;
@@ -376,7 +384,10 @@ int main (int argc, char **argv)
 							if (o[ac] < buffer->b.size ())
 							{
 								ac ++;
-								confirm += 1;
+								if (ac < 3)
+									confirm += 1;
+								else
+									confirm += 12;
 								s = 0;
 							}
 							else
@@ -400,7 +411,7 @@ int main (int argc, char **argv)
 					}
 					break;
 				}
-				case 3:
+				case 3: //get name
 				{
 					switch (key)
 					{
@@ -418,7 +429,7 @@ int main (int argc, char **argv)
 							{
 								name[count] = key;
 								count ++;
-								s = 5;
+								s = 0;
 								break;
 							}
 						}
@@ -917,7 +928,66 @@ int main (int argc, char **argv)
 						break;
 					}
 				}
+				break;
 			}
+			case 16:
+			{
+				if (o[0] >= buffer->b.size () or
+					o[1] >= buffer->b.size ())
+				{
+					write (1, "?", 1);
+					break;
+				}
+				if (!(buffer->b.size () > 0))
+				{
+					write (1, "!", 1);
+					break;
+				}
+				switch (cmd)
+				{
+					case 'm':
+					{
+						tmp.clear ();
+						tmp = buffer->b.substr (o[0], o[0] + 1);
+						break;
+					}
+					default:
+					{
+						write (1, "?", 1);
+						break;
+					}
+				}
+			}
+			case 17:
+			{
+				f (o[0] >= buffer->b.size () or
+					o[1] >= buffer->b.size () or
+					[o[2] >= buffer->b.size ())
+				{
+					write (1, "?", 1);
+					break;
+				}
+				if (!(buffer->b.size () > 0))
+				{
+					write (1, "!", 1);
+					break;
+				}
+				switch (cmd)
+				{
+					case 'm':
+					{
+
+						break;
+					}
+					default:
+					{
+						write (1, "?", 1);
+						break;
+					}
+				}
+				break;
+			}
+
 		}
 		write (1, "\n", 1);
 		delete[] o;
