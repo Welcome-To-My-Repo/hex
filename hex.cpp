@@ -183,11 +183,11 @@ int main (int argc, char **argv)
 	sts.clear ();
 	sts << DEFAULT;
 	write (1, sts.str ().c_str (), sts.str ().size ());
-	while (1)
+	while (1) //main loop
 	{
 		t.str (gin ());
 
-		while (t.get(key))
+		while (t.get(key)) //command parsing loop
 		{
 			if (key == ' ' or key == '\t')
 				continue;
@@ -384,10 +384,7 @@ int main (int argc, char **argv)
 							if (o[ac] < buffer->b.size ())
 							{
 								ac ++;
-								if (ac < 3)
-									confirm += 1;
-								else
-									confirm += 12;
+								confirm += 1;
 								s = 0;
 							}
 							else
@@ -437,7 +434,7 @@ int main (int argc, char **argv)
 					}
 					break;
 				}
-				case 4:
+				case 4: //get marked address
 				{
 					switch (key)
 					{
@@ -524,7 +521,7 @@ int main (int argc, char **argv)
 		t.str ("");
 		t.clear ();
 		write (1, "\r\x1b[2K", 5);
-		switch (confirm)
+		switch (confirm) //do a thing
 		{
 			case -1:
 			{
