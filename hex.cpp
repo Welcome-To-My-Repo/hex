@@ -559,16 +559,6 @@ int main (int argc, char **argv)
 			}
 			case 3:
 			{
-				if (!(buffer->b.size () > 0))
-				{
-					write (1, "!", 1);
-					break;
-				}
-				if (o[0] < 0 or o[0] >= buffer->b.size ())
-				{
-					write (1, "?", 1);
-					break;
-				}
 				switch (cmd)
 				{
 					case '-':
@@ -960,9 +950,9 @@ int main (int argc, char **argv)
 			}
 			case 17:
 			{
-				f (o[0] >= buffer->b.size () or
+				if (o[0] >= buffer->b.size () or
 					o[1] >= buffer->b.size () or
-					[o[2] >= buffer->b.size ())
+					o[2] >= buffer->b.size ())
 				{
 					write (1, "?", 1);
 					break;
