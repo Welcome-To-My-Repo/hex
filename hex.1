@@ -6,29 +6,17 @@ hex
 .SH SYNOPSIS
 .HP
 .ad 1
-\fBhex\fR [\fIfile\fR ...]
+\fBhex\fR [-p \fIstring\fR] [-s] [\fIfile\fR]
 .SH DESCRIPTION
-.I Hex
-is a hexadecimal editor based on the POSIX text editor
-.I ex.
-.I Hex
-implements a basic subset of the pseudo-scripting syntax that ex uses in command
-mode.
-.PP
-Where
-.I ex
-is a line-oriented editor,
-.I hex
-is a byte-word-oriented editor. It groups and accesses series of bytes by a
-variable word length which can be set when invoking the editor, or on the fly
-with a command.
-.PP
-This manual states that
-.I Hex
-supports regular expression matching. However, this is not true for the current
-version of
-.I hex.
-.I Hex,
+The hex utility is a word-oriented binary file editor based on the POSIX utility 
+.I ed
+that uses two modes: 
+.I command mode
+and
+.I input mode.
+In command mode the input characters shall be interpreted as commands, and in input mode they shall be interpreted as hexadecimal-encoded values.
+
+If an operand is '-', the results are unspecified.
 version 0.1, only supports basic pattern matching in place of where a regular
 expression would be entered. Support for regular expressions will be implemented
 in a later version.

@@ -1,1 +1,34 @@
-hex addresses begin with '[' and are eight numbers long
+what can hex do?
+
+append bytes to a file from a given offset between 1 to the end of the file.
+insert bytes in a file at a given offset between 0 to preceding the last offset of the file.
+delete a number of bytes starting at a given offset.
+replace a number of bytes starting at a given offset.
+
+how does the hex interface work.
+
+a command is typed, then the enter key is pressed.
+an empty command prints sixteen bytes beginning at the current offset.
+
+'w' increases the current offset by a single byte.
+'W' increases the current offset by sixteen bytes.
+0x-------- positions the current offset at the offset specified by the hexadecimal number
+
+a	appends
+i	inserts
+c	replaces
+
+d	removes optionally into a temprary buffer
+y	copies into a temporary buffer
+p	inserts a temporary buffer
+
+o	opens a file
+n	cycles to the next open file
+r	cycles to the previous open file
+s	opens a file and reads the contents as commands
+
+w	writes the current file to its associated pathname
+q	closes the current file
+q!	closes the current file without writing
+
+f	prints stuff about the file
