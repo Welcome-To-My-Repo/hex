@@ -4,10 +4,10 @@ INSTALL = /usr/local/bin
 default: debug
 
 debug:
-	c++ -ohex hex.cpp -g3
+	cc -ohex hex.c -g3
 
 release:
-	c++ -ohex hex.cpp -O3
+	cc -ohex hex.c -O3
 
 
 
