@@ -20,6 +20,8 @@ Commands:
   (.,.) copy, c [buffer]
   (.) put, p [buffer]
   (.) flag, f
+  >  next buffer
+  <  previous buffer
   quit, q
   quit!, q!
   write, w
@@ -51,6 +53,7 @@ typedef struct u
 		replace_offset, //undo by inserting
 		replace_length;
 	unsigned char* buf; //bytes
+	struct u *previous; //location of previous undo information
 } UNDO;
 
 typedef struct BUFFER //it's a.... buffer!
@@ -71,14 +74,22 @@ typedef struct BUFFER //it's a.... buffer!
 
 unsigned char* VB; //volatile buffer for cuts and deletes
 BUFFER* THE_FILES; //array of file buffers
+unsigned int NUMBER_OF_FILES = 0;
 BUFFER* buffer; //which file buffer is active
-UNDO history[16];
-unsigned char history_top;
+UNDO *history; //linked list of operations for undo
+unsigned char history_length;
 
 int show (BUFFER* b, unsigned long long int p); //prints a "word" (see word_size)
 
+termios ui, preserve;
+
 int main (int argc, char** argv)
 {
+	/*READ IN FILES*/
 
+	/*LOOP GETTING COMMANDS*/
+	GET:
+	
+	QUIT:
 	return 0;
 }
