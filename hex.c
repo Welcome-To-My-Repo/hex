@@ -27,22 +27,21 @@
 Hex Usage:\n\
   hex [-h file]\n\
 Addressing:\n\
-  \".\" The current offset\n\
-  \"n\" The nth byte of the file\n\
-  \"+/-n\" An offset relative to the current offset\n\
-  \"/pat\" Search forwards for a series of bytes\n\
-  \"\\pat\" Search backwards for a series of bytes\n\
+  .\t -- The current offset\n\
+  'n\t -- The nth byte of the file\n\
+  +n,-n\t -- An offset relative to the current offset\n\
+  $b\t -- Seek to next offset matching a series of bytes b\n\
 Commands:\n\
-  (.,.) * -- edit\n\
-  (.,.) ^ (.) -- move\n\
-  (.,.) / [buffer] -- delete\n\
-  (.,.) = [buffer] -- copy\n\
-  (.) & [buffer] -- put\n\
-  (.) @ [mark] -- mark\n\
-  ! -- quit\n\
-  # -- write\n\
-  _ -- undo\n\
-  ? [pathname]-- file information\n\
+  (.,.) *\t\t -- edit\n\
+  (.,.) ^ (.)\t\t -- move\n\
+  (.,.) / [buffer]\t -- delete\n\
+  (.,.) = [buffer]\t -- copy\n\
+  (.) & [buffer]\t -- put\n\
+  (.) @ [mark]\t\t -- mark\n\
+  !\t\t\t -- quit\n\
+  #\t\t\t -- write\n\
+  _\t\t\t -- undo\n\
+  ? [pathname]\t\t -- file information\n\
 "
 
 unsigned int word_size = 8; //how many byts to print in a row
@@ -147,15 +146,11 @@ int main (int argc, char** argv)
 
 	GET_COMMAND:
 
-	free(command);
+	if (l > 0) free(command);
 	l = 0;
 	while(read(0, &c, 1) > 0)
 	{
-		if (c == 0 || c == 27)
-		{
-			continue;
-		}
-		else if (c == 8 || c == 127)
+		if (c == 8 || c == 127)
 		{
 			if (l > 0)
 			{
@@ -167,10 +162,12 @@ int main (int argc, char** argv)
 		}
 		else if (c == 10 || c == 13 || c == ';')
 		{
-			l++;
-			command = realloc(command, l);
-			command[l-1] = c;
+			c = 0;
 			break;
+		}
+		else if (c < 33)
+		{
+			continue;
 		}
 		else
 		{
@@ -189,44 +186,64 @@ int main (int argc, char** argv)
 
 	switch (command[0])
 	{
-		case '*':
+		case '*': //edit
 		{
 			break;
 		}
-		case '^':
+		case '^': //move
 		{
 			break;
 		}
-		case '/':
+		case '/': //delete
 		{
 			break;
 		}
-		case '=':
+		case '=': //copy
 		{
 			break;
 		}
-		case '&':
+		case '&': //put
 		{
 			break;
 		}
-		case '@':
+		case '@': //mark
 		{
 			break;
 		}
-		case '!':
+		case '!': //quit
 		{
 			goto QUIT;
 			break;
 		}
-		case '#':
+		case '#': //write
 		{
 			break;
 		}
-		case '-':
+		case '_': //undo
 		{
 			break;
 		}
-		case '?':
+		case '?': //file info
+		{
+			break;
+		}
+		case '.': //current offset
+		{
+			break;
+		}
+		case '+': //forward relative offset
+		{
+			break;
+		}
+		case '-': //backward relative offset
+		{
+			break;
+		}
+		case '\'': //offset
+		{
+			break;
+		}
+		case '$': //seek offset
 		{
 			break;
 		}

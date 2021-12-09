@@ -47,7 +47,7 @@ WORD_SIZE = 16;			//the number of bytes to display on one line
  hex [-h] [file]\n\
 Addressing:\n\
  \".\" The current offset\n\
- \"n\" The nth byte of the file\n\
+ \"'n\" The nth byte of the file\n\
  \"+/-n\" An offset relative to the current offset\n\
  \"/pat\" Search forwards for a series of bytes\n\
  \"\\pat\" Search backwards for a series of bytes\n\
@@ -75,6 +75,6 @@ Commands:\n\
  flag @
  quit !
  write #
- undo -
+ undo _
  file ?
  */
