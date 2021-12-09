@@ -166,7 +166,7 @@ int main (int argc, char **argv)
 		 * option +12
 		 * third address +12
 		*/
-	char 
+	char
 		cmd = 0, //holds command character
 		opt = 0, //holds option character
 		*a = new char [8], //holds hex offset
@@ -175,7 +175,7 @@ int main (int argc, char **argv)
 		*keyword = new char[4], //used for keyword commands
 		*mk = new char[4]; //used for marked addresses
 
-	std::string 
+	std::string
 		*rx = new std::string[2], //holds regular expressions
 		path, //holds pathname
 		*prx = new std::string[2]; //holds previous regular expressions
@@ -187,7 +187,7 @@ int main (int argc, char **argv)
 	sts.clear ();
 	sts << DEFAULT;
 	write (1, sts.str ().c_str (), sts.str ().size ());
-			
+
 	while (1) //main loop
 	{
 		t.str (gin ());

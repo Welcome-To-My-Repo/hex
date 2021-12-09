@@ -32,3 +32,49 @@ const char
 int
 
 WORD_SIZE = 16;			//the number of bytes to display on one line
+
+#define H1 1
+#define H2 16
+#define H3 256
+#define H4 4096
+#define H5 65536
+#define H6 1048576
+#define H7 16777216
+#define H8 268435456
+
+#define HELP_STRING \
+"Hex Usage:\n\
+ hex [-h] [file]\n\
+Addressing:\n\
+ \".\" The current offset\n\
+ \"n\" The nth byte of the file\n\
+ \"+/-n\" An offset relative to the current offset\n\
+ \"/pat\" Search forwards for a series of bytes\n\
+ \"\\pat\" Search backwards for a series of bytes\n\
+Commands:\n\
+ (.,.) edit, e\n\
+ (.,.) move, m (.)\n\
+ (.,.) delete, d [buffer]\n\
+ (.,.) copy, c [buffer]\n\
+ (.) put, p [buffer]\n\
+ (.) flag, f\n\
+ next, n\n\
+ file, f [pathname]\n\
+ quit, q [!]\n\
+ write, w\n\
+ undo, u\
+\nPlease see the manual for more detailed information\
+"
+
+/*
+ edit *
+ move ^
+ delete /
+ copy =
+ put &
+ flag @
+ quit !
+ write #
+ undo -
+ file ?
+ */
